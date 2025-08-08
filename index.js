@@ -18,12 +18,34 @@ made with love by Zireael
 console.log('🔗 Repo: https://github.com/zireael-dev/kaworibot (coming soon!)');
 console.log('💡 KaworiBot is starting...\n');
 
-// ——— Inisialisasi Global DB ———
-global.db = global.db || {};
-global.db.setting = global.db.setting || {};
-global.db.bannedUsers = global.db.bannedUsers || [];
-global.db.users = global.db.users || [];
-global.db.groups = global.db.groups || [];
+// ——— Inisialisasi & Autosave Global DB ———
+const dbFile = path.join(__dirname, 'db.json');
+
+// Load dari db.json jika ada, kalau tidak bikin baru
+if (fs.existsSync(dbFile)) {
+  try {
+    global.db = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+    console.log('📦 Database loaded from db.json');
+  } catch (e) {
+    console.warn('⚠️  Gagal load db.json, file rusak atau format salah. Memulai DB baru.');
+    global.db = {};
+  }
+} else {
+  global.db = {};
+}
+global.db.setting      = global.db.setting      || {};
+global.db.bannedUsers  = global.db.bannedUsers  || [];
+global.db.users        = global.db.users        || [];
+global.db.groups       = global.db.groups       || [];
+
+// Autosave DB ke file setiap 10 detik
+setInterval(() => {
+  try {
+    fs.writeFileSync(dbFile, JSON.stringify(global.db, null, 2));
+  } catch (e) {
+    console.error('❌ Gagal autosave db.json:', e.message);
+  }
+}, 10_000);
 
 // ——— Plugin loader ———
 const pluginsDir = path.join(__dirname, 'plugins');
@@ -46,7 +68,6 @@ if (fs.existsSync(pluginsDir)) {
     }
   }
 }
-
 console.log('\n✅ KaworiBot plugin system ready!\n');
 
 // Watermark default (untuk greeting/menu/dll)
