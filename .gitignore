@@ -1,0 +1,46 @@
+# ==========================
+# KAWORIBOT .gitignore
+# ==========================
+
+# 1. Node modules dan dependencies
+node_modules/
+lib/
+utils/
+
+# 2. Auth & session WA
+auth/
+session/
+
+# 3. Data, database, cache, & hasil runtime
+db.json
+database.json
+temp/
+output*
+input*
+*.log
+npm-debug.log*
+output.webm
+output.webp
+output.jpg
+output.png
+input.jpg
+input.png
+
+# 4. Sistem/OS/IDE Junk
+.DS_Store
+Thumbs.db
+
+# 5. File konfigurasi sensitive (tidak termasuk config.json)
+*.env
+
+# 6. Other random file
+resolv.conf
+
+# 7. Ignore personal/private backups
+*.bak
+
+# 8. Ignore lock file jika kamu tidak ingin commit
+# package-lock.json
+
+# 9. Ignore file VSCode (optional)
+.vscode/
