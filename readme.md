@@ -20,7 +20,7 @@
 
 1. **Clone repository**
     ```bash
-    git clone https://github.com/username/kaworibot.git
+    git clone https://github.com/zireael-dev/kaworibot.git
     cd kaworibot
     ```
 
