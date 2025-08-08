@@ -15,8 +15,6 @@ console.log(`
 Kawori-Bot v0.1
 made with love by Zireael
 `);
-
-
 console.log('🔗 Repo: https://github.com/zireael-dev/kaworibot (coming soon!)');
 console.log('💡 KaworiBot is starting...\n');
 
@@ -72,9 +70,9 @@ async function startBot() {
 
   const sock = makeWASocket({
     logger: pino({ level: 'silent' }),
-                            printQRInTerminal: false,
-                            auth: state,
-                            version
+    printQRInTerminal: false,
+    auth: state,
+    version
   });
 
   // — Connection lifecycle —
@@ -127,6 +125,13 @@ async function startBot() {
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0];
     if (!m.message || m.key.fromMe) return;
+
+    // === AUTO READ ALL PESAN ===
+    try {
+      await sock.readMessages([m.key]);
+    } catch (e) {
+      console.error('Auto-read failed:', e.message);
+    }
 
     const from = m.key.remoteJid;
     const sender = m.key.participant || from;
