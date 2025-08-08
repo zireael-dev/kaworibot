@@ -118,6 +118,8 @@ module.exports = async (sock, m, text, from, watermark) => {
         LINE_THIN,
         '🖼️ Set cover menu\n/setcover <url>',
         LINE_THIN,
+        '🚀 Update Bot\n/update',
+        LINE_THIN,
         '🔄 Restart Bot\n/restart',
         LINE_BOLD,
         '⬅️ Kembali\n/menu',
