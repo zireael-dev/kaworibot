@@ -8,6 +8,9 @@
  * /stop           -> Menghentikan cerita saat ini.
  */
 
+// FIX: Menggunakan node-fetch untuk stabilitas request di server
+const fetch = require('node-fetch');
+
 const b = (t) => `*${t}*`;
 const i = (t) => `_${t}_`;
 const LINE = '────────────────────';
