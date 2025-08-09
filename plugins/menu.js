@@ -196,6 +196,8 @@ module.exports = async (sock, m, text, from, watermark) => {
         LINE_THIN,
         '🖼️ Stiker ke gambar\n/toimg',
         LINE_THIN,
+        '🟩 Brat generator\n/brat',
+        LINE_THIN,
         '🤝 Gabung emoji\n/emojimix e1+e2',
         LINE_BOLD,
         '⬅️ Kembali\n/menu',
