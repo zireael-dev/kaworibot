@@ -51,10 +51,15 @@ async function getTMDbSeriesDetails(seriesTitle) {
         return null;
     }
     try {
+        let originalTitle = seriesTitle;
+        // Ekstrak nomor season dari judul
+        const seasonMatch = originalTitle.match(/season\s*(\d+)/i);
+        const seasonNumber = seasonMatch ? parseInt(seasonMatch[1]) : 1;
+
         // Membersihkan judul dari embel-embel episode/end/season
         seriesTitle = seriesTitle
             .replace(/episode\s*\d{1,2}-\d{1,2}\s*end/i, '')
-            .replace(/season\s*\d{1,2}/i, '')
+            .replace(/season\s*\d+/i, '')
             .trim();
         
         let year = '';
@@ -73,8 +78,8 @@ async function getTMDbSeriesDetails(seriesTitle) {
             let episodes = [];
 
             try {
-                // Ambil detail untuk season 1 (umumnya yang paling relevan untuk batch)
-                const seasonDetailsUrl = `https://api.themoviedb.org/3/tv/${seriesId}/season/1?api_key=${TMDB_API_KEY}&language=id-ID`;
+                // Ambil detail untuk season yang cocok
+                const seasonDetailsUrl = `https://api.themoviedb.org/3/tv/${seriesId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}&language=id-ID`;
                 const { data: seasonData } = await client.get(seasonDetailsUrl);
                 if (seasonData.episodes) {
                     episodes = seasonData.episodes.map(ep => ({
@@ -83,15 +88,14 @@ async function getTMDbSeriesDetails(seriesTitle) {
                     }));
                 }
             } catch (seasonError) {
-                console.error("Tidak bisa mengambil detail season dari TMDb:", seasonError.message);
-                // Tidak apa-apa jika gagal, kita hanya tidak akan punya judul episode
+                console.error(`Tidak bisa mengambil detail season ${seasonNumber} dari TMDb:`, seasonError.message);
             }
 
             return {
                 title: series.name || seriesTitle,
                 synopsis: series.overview || 'Sinopsis tidak tersedia dalam bahasa Indonesia.',
                 poster: series.poster_path ? `https://image.tmdb.org/t/p/w500${series.poster_path}` : null,
-                episodes: episodes // Kembalikan daftar episode
+                episodes: episodes
             };
         }
         return null;
@@ -186,18 +190,20 @@ module.exports = async (sock, m, text, from) => {
 
             const title = tmdbDetails?.title || $('h1.entry-title').text().trim();
             const synopsis = tmdbDetails?.synopsis || $('div[itemprop="description"] p').map((i, el) => $(el).text()).get().join('\n\n').trim();
-            const poster = tmdbDetails?.poster || $('img.attachment-post-thumbnail').attr('src');
+            const poster = tmdbDetails?.poster || $('img.ts-post-image').attr('src');
             const tmdbEpisodes = tmdbDetails?.episodes || [];
 
             const scrapedEpisodes = [];
-            $('div.download-eps').each((idx, el) => {
-                const episodeTitleRaw = $(el).find('p > strong').text().trim().replace(':', '');
+            // FIX: Selector baru untuk halaman detail serial
+            $('#smokeddl .smokeurl h3.smokettl').each((idx, el) => {
+                const episodeTitleRaw = $(el).text().trim();
                 const episodeNumberMatch = episodeTitleRaw.match(/episode\s*(\d+)/i);
                 if (!episodeNumberMatch) return;
 
                 const episodeNumber = parseInt(episodeNumberMatch[1]);
                 const links = [];
-                $(el).find('a').each((a_idx, a_el) => {
+                // Ambil semua paragraf <p> setelah <h3> sampai <h3> berikutnya
+                $(el).nextUntil('h3.smokettl', 'p').find('a').each((a_idx, a_el) => {
                     const provider = $(a_el).text().trim();
                     const link = $(a_el).attr('href');
                     if (provider && link) {
@@ -235,8 +241,8 @@ module.exports = async (sock, m, text, from) => {
                     const sortedQualities = Object.keys(linksByQuality).sort((a, b) => (parseInt(b) || 0) - (parseInt(a) || 0));
                     
                     for (const quality of sortedQualities) {
-                        linksText += `${i(quality)}:\n`;
-                        linksText += linksByQuality[quality].map(link => `• ${link.provider}: ${link.link}`).join('\n');
+                        linksText += `${i(quality)}: `;
+                        linksText += linksByQuality[quality].map(link => `${link.provider}`).join(', ');
                         linksText += '\n';
                     }
                     linksText += '\n';
