@@ -157,9 +157,27 @@ async function startBot() {
     const from = m.key.remoteJid;
     const sender = m.key.participant || from;
     const text = m.message.conversation || m.message.extendedTextMessage?.text || '';
+    const lower = text.toLowerCase();
 
     // — Skip banned users —
     if (global.db.bannedUsers.includes(sender)) return;
+
+    // --- Story Time Game Lock ---
+    // Pastikan database storytime sudah diinisialisasi
+    global.db.storytime = global.db.storytime || {};
+    const storySession = global.db.storytime[from];
+
+    if (storySession) {
+        const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai'];
+        const isStoryCommand = allowedCommands.some(cmd => lower.startsWith(cmd));
+        
+        // Jika sesi ada DAN perintahnya BUKAN perintah cerita
+        if (!isStoryCommand) {
+            // Kirim peringatan dan HENTIKAN eksekusi lebih lanjut
+            return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita sebelum menggunakan perintah lain." }, { quoted: m });
+        }
+    }
+    // --- End of Game Lock ---
 
     // — Simpan list pengguna unik untuk broadcast (/bc) —
     if (!global.db.users.includes(sender)) global.db.users.push(sender);
