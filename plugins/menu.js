@@ -260,7 +260,7 @@ case '/menu animanga':
         LINE_THIN,
         '💡 Trivia acak\n/fakta',
         LINE_THIN,
-        '📖 Story time\nKisah interaktif',
+        '📖 Story Interactive\n/story',
         LINE_BOLD,
         '⬅️ Kembali\n/menu',
         LINE_BOLD,
