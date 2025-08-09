@@ -1,7 +1,7 @@
 /**
  * plugins/help.js
- * Help lengkap: ringkas, jelas, ramah Gen Z
- * /help, /help <kategori>, /help <command>
+ * Help ringkas & jelas (ramah Gen Z)
+ * Pakai: /help, /help <kategori>, /help <command>
  */
 module.exports = async (sock, m, text, from, watermark) => {
   const raw = (text || '').trim();
@@ -10,13 +10,14 @@ module.exports = async (sock, m, text, from, watermark) => {
   // Prefix dinamis
   const setting = global.db?.setting || {};
   const PREFIX = setting.multiprefix ? (setting.prefix || ['/', '!']) : [setting.onlyprefix || '/'];
-  const used = PREFIX.find(p => lower.startsWith(p + 'help')) || '/';
+  const usedPrefix = PREFIX.find(p => lower.startsWith(p + 'help')) || '/';
   if (!PREFIX.some(p => lower.startsWith(p + 'help'))) return;
 
-  const arg = raw.slice((used + 'help').length).trim().toLowerCase();
+  const arg = raw.slice((usedPrefix + 'help').length).trim().toLowerCase();
+  const p = usedPrefix; // biar singkat
 
   // ===== Data Help =====
-  const C = (p = used) => ({
+  const C = {
     // ==== DOWNLOADER ====
     fb: {
       title: 'Facebook Downloader',
@@ -28,7 +29,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     },
     tiktok: {
       title: 'TikTok No-WM',
-      aliases: ['tt', 'vt'], // vt = non-WM juga
+      aliases: ['tt', 'vt'],
       what: 'Download video TikTok tanpa watermark (foto slide didukung).',
       how: `${p}tiktok <link TT>`,
       example: `${p}tiktok https://www.tiktok.com/@user/video/1234567890`,
@@ -53,7 +54,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     ig: {
       title: 'Instagram Downloader',
       aliases: ['igdl'],
-      what: 'Download Post/Reels (bisa multi media).',
+      what: 'Download Post/Reels (bisa multi-media).',
       how: `${p}ig <link IG>`,
       example: `${p}ig https://www.instagram.com/p/CK0tLXyAzEI/`,
       notes: 'Akan mengirim semua foto/video pada postingan.'
@@ -98,13 +99,13 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Bikin stiker meme dari foto (teks atas|bawah, otomatis UPPERCASE).',
       how: `${p}smeme <atas>|<bawah> (reply/upload foto)`,
       example: `${p}smeme AKU LAPAR|TAPI MALAS MASAK`,
-      notes: 'Font Arial putih + outline hitam, ukuran 100.'
+      notes: 'Font Arial putih + outline hitam, size 100.'
     },
     snobg: {
       title: 'Sticker No-Background',
       aliases: ['nobg'],
       what: 'Hapus background foto, kirim sebagai stiker transparan.',
-      how: `${p}snobg (reply foto)`,
+      how: `${p}snobg (reply foto / caption ${p}snobg)`,
       example: `${p}snobg`,
       notes: 'Pastikan reply ke foto, bukan file dokumen.'
     },
@@ -114,7 +115,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Jadiin foto/video ke stiker. Bisa reply atau caption.',
       how: `${p}s  (reply/upload foto/video)`,
       example: `${p}s`,
-      notes: 'Video jadi stiker CROPPED; foto FULL. Metadata pakai /setwm.'
+      notes: 'Video = CROPPED; Foto = FULL. Metadata pakai /setwm.'
     },
     toimg: {
       title: 'Sticker → Gambar',
@@ -130,7 +131,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Gabung 2 emoji jadi 1 stiker emoji.',
       how: `${p}emojimix 😳+😩`,
       example: `${p}emojimix 😺+🌮`,
-      notes: 'Gunakan format emoji1+emoji2.'
+      notes: 'Format: emoji1+emoji2.'
     },
 
     // ==== GROUP TOOLS ====
@@ -140,7 +141,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Tag semua member grup.',
       how: `${p}tageveryone on  (atau off)`,
       example: `${p}tageveryone on`,
-      notes: 'Hanya admin/owner bot yang dapat menyalakan.'
+      notes: 'Hanya admin/owner bot dapat menyalakan.'
     },
     antilink: {
       title: 'Anti Link',
@@ -148,13 +149,13 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Auto deteksi & tindak link di grup.',
       how: `${p}antilink on (atau off)`,
       example: `${p}antilink on`,
-      notes: 'Aksi lanjut (hapus/kick) menyesuaikan setting bot.'
+      notes: 'Aksi lanjut (hapus/kick) menyesuaikan setting.'
     },
     welcome: {
       title: 'Welcome Message',
       aliases: [],
       what: 'Sambut member baru otomatis.',
-      how: `${p>welcome on (atau off)`.replace('>', ''),
+      how: `${p}welcome on (atau off)`,
       example: `${p}welcome on`,
       notes: 'Pesan sapaan bisa dikustom (WIP).'
     },
@@ -171,7 +172,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     server: {
       title: 'Server Info',
       aliases: [],
-      what: 'Ringkasan OS, CPU, RAM, uptime, lokasi (tanpa tampilkan IP publik).',
+      what: 'Ringkasan OS, CPU, RAM, uptime, lokasi (tanpa IP publik).',
       how: `${p}server`,
       example: `${p}server`,
       notes: 'Timezone/ISP dicoba dideteksi otomatis.'
@@ -200,7 +201,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Set pack & author untuk metadata sticker.',
       how: `${p}setwm <Pack> | <Author>`,
       example: `${p}setwm ©Organisasi Pencinta Masakan | Kawori-Bot by Zireael`,
-      notes: 'Hanya owner utama.'
+      notes: 'Hanya owner.'
     },
     ban: {
       title: 'Ban User',
@@ -240,7 +241,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Restart proses bot (pm2/forever disarankan).',
       how: `${p}restart`,
       example: `${p}restart`,
-      notes: 'Owner saja. Bot kirim PM konfirmasi setelah hidup.'
+      notes: 'Owner saja. Bot PM konfirmasi setelah hidup.'
     },
     update: {
       title: 'Update dari Git',
@@ -250,66 +251,56 @@ module.exports = async (sock, m, text, from, watermark) => {
       example: `${p}update`,
       notes: 'Pastikan repo & remote sudah diset di VPS.'
     }
-  });
+  };
 
   // ===== Kategori → daftar command =====
-  const K = (p = used) => ({
+  const K = {
     downloader: ['fb','tiktok','tikwm','tikmp3','ig','x','yt','pinterest','spotify'],
     converter:  ['smeme','snobg','s','toimg','emojimix'],
     grouptools: ['tageveryone','antilink','welcome'],
-    study:      ['ocr','translate','pdf'],      // jika belum ada: WIP
-    fun:        ['tebak','quiz'],               // jika belum ada: WIP
-    info:       ['userinfo','server','stat','owner'],
+    study:      ['ocr','translate','pdf'],  // jika belum ada: WIP
+    fun:        ['tebak','quiz'],           // jika belum ada: WIP
+    info:       ['userinfo','server','stat','owner','help'],
     owner:      ['setwm','ban','unban','bc','bcgc','restart','update']
-  });
-
-  // ===== Helpers render =====
-  const data = C();
-  const cats = K();
-
-  const renderIndex = () => {
-    return [
-      '🆘 *Help Index*',
-      '',
-      'Kategori:',
-      `• ${used}help downloader`,
-      `• ${used}help converter`,
-      `• ${used}help grouptools`,
-      `• ${used}help study`,
-      `• ${used}help fun`,
-      `• ${used}help info`,
-      `• ${used}help owner`,
-      '',
-      'Atau detail command:',
-      `• ${used}help smeme`,
-      `• ${used}help tiktok`,
-      `• ${used}help sticker`,
-      '',
-      `_Prefix aktif: ${PREFIX.join(' ')}_`,
-      '',
-      watermark
-    ].join('\n');
   };
 
+  // ===== Helpers =====
+  const renderIndex = () => [
+    '🆘 *Help Index*',
+    '',
+    'Kategori:',
+    `• ${p}help downloader`,
+    `• ${p}help converter`,
+    `• ${p}help grouptools`,
+    `• ${p}help study`,
+    `• ${p}help fun`,
+    `• ${p}help info`,
+    `• ${p}help owner`,
+    '',
+    'Atau detail command:',
+    `• ${p}help smeme`,
+    `• ${p}help tiktok`,
+    `• ${p}help sticker`,
+    '',
+    `_Prefix aktif: ${PREFIX.join(' ')}_`,
+    '',
+    watermark
+  ].join('\n');
+
   const resolveCommandKey = (name) => {
-    // strip prefix char di awal jika ada
-    const n = name.replace(/^[-/!#.]/, '');
-    // direct hit
-    if (data[n]) return n;
-    // cari by alias
-    for (const key of Object.keys(data)) {
-      const a = data[key].aliases || [];
+    const n = name.replace(/^[-/!#.]/, ''); // buang 1 prefix kalau ada
+    if (C[n]) return n;
+    for (const key of Object.keys(C)) {
+      const a = C[key].aliases || [];
       if (a.map(s => s.toLowerCase()).includes(n)) return key;
     }
-    // mapping populer
     if (n === 'sticker' || n === 'stiker' || n === 'stick') return 's';
     return null;
   };
 
   const renderCategory = (key) => {
-    const list = cats[key];
+    const list = K[key];
     if (!list) return null;
-    const lines = [];
     const titleMap = {
       downloader: '⬇️ Downloader',
       converter:  '🔄 Converter',
@@ -319,12 +310,17 @@ module.exports = async (sock, m, text, from, watermark) => {
       info:       'ℹ️ Info',
       owner:      '👑 Owner'
     };
-    lines.push(`*${titleMap[key]}*`);
-    lines.push('');
+    const lines = [`*${titleMap[key]}*`, ''];
     for (const cmdKey of list) {
-      const c = data[cmdKey] || { title: cmdKey.toUpperCase(), what: 'Work in Progress', how: `${used}${cmdKey}`, example: `${used}${cmdKey}`, notes: 'Segera hadir.' };
+      const c = C[cmdKey] || {
+        title: cmdKey.toUpperCase(),
+        what: 'Work in Progress',
+        how: `${p}${cmdKey}`,
+        example: `${p}${cmdKey}`,
+        notes: 'Segera hadir.'
+      };
       const alts = (c.aliases && c.aliases.length) ? ` (alias: ${c.aliases.join(', ')})` : '';
-      lines.push(`• *${used}${cmdKey}*${alts}`);
+      lines.push(`• *${p}${cmdKey}*${alts}`);
       lines.push(`  - ${c.what}`);
       lines.push(`  - Cara: ${c.how}`);
       lines.push(`  - Contoh: ${c.example}`);
@@ -336,7 +332,7 @@ module.exports = async (sock, m, text, from, watermark) => {
   };
 
   const renderCommand = (key) => {
-    const c = data[key];
+    const c = C[key];
     if (!c) return null;
     const alts = (c.aliases && c.aliases.length) ? ` (alias: ${c.aliases.join(', ')})` : '';
     const lines = [
@@ -346,8 +342,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       `- Contoh: ${c.example}`
     ];
     if (c.notes) lines.push(`- Catatan: ${c.notes}`);
-    lines.push('');
-    lines.push(watermark);
+    lines.push('', watermark);
     return lines.join('\n');
   };
 
@@ -356,21 +351,18 @@ module.exports = async (sock, m, text, from, watermark) => {
     return sock.sendMessage(from, { text: renderIndex() }, { quoted: m });
   }
 
-  // kategori?
-  if (cats[arg]) {
+  if (K[arg]) {
     const out = renderCategory(arg);
     if (out) return sock.sendMessage(from, { text: out }, { quoted: m });
   }
 
-  // command?
   const k = resolveCommandKey(arg);
   if (k) {
     const out = renderCommand(k);
     if (out) return sock.sendMessage(from, { text: out }, { quoted: m });
   }
 
-  // fallback
   return sock.sendMessage(from, {
-    text: `❓ Nggak nemu *${arg}*.\nCoba: *${used}help* lalu pilih kategori/command.`
+    text: `❓ Nggak nemu *${arg}*.\nCoba: *${p}help* lalu pilih kategori/command.`
   }, { quoted: m });
 };
