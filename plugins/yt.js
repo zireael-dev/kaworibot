@@ -1,141 +1,185 @@
 /**
  * plugins/yt.js
- * YouTube downloader tanpa fetcher metadata.
+ * YouTube downloader tanpa fetcher (langsung hit endpoint neoxr).
  * Alur:
- *   1) /yt <url>  -> bot simpan state & tanya mau /video atau /audio
- *   2) reply /video -> kirim MP4 (default 480p)
- *      reply /audio -> kirim MP3 (default 128kbps)
+ *   1) /yt <url>  -> simpan sesi 10 menit
+ *   2) /audio [128kbps|192kbps|320kbps]  -> kirim MP3
+ *   3) /video [360p|480p|720p]           -> kirim MP4
  *
- * Catatan:
- * - Hanya /video /audio yang membalas pesan prompt /yt yang diproses.
- * - State kedaluwarsa 10 menit.
- * - Tidak ada size check: langsung kirim ke WhatsApp.
+ * React: ⏳ saat mulai, ✅ saat sukses, ❌ saat gagal.
  *
- * Dependensi: npm i axios
+ * npm i axios
  */
 
 const axios = require('axios');
 
 // ====== KONFIGURASI MUDAH DIUBAH ======
-const NEOXR_KEY = 'UCIELL';
-const DEFAULT_VIDEO_QUALITY = '480p';     // ubah sewaktu-waktu (mis. '360p' | '720p')
-const DEFAULT_AUDIO_QUALITY = '128kbps';  // ubah sewaktu-waktu (mis. '192kbps')
-// ======================================
+const NEOXR_KEY = 'UCIELL';                 // ganti kalau perlu
+const VIDEO_QUALITY_DEFAULT = '480p';       // default video
+const AUDIO_QUALITY_DEFAULT = '128kbps';    // default audio
+const SESSION_TTL_MS = 10 * 60 * 1000;      // 10 menit
+const AXIOS_TIMEOUT_MS = 120_000;           // 120 detik
 
-// state sementara per-chat (tidak dipersist)
-global.__ytPending = global.__ytPending || {}; // { [chatJid]: { url, promptKey, ts } }
-const EXP_MIN = 10; // menit
+// Simpan sesi per-pengirim (JID pengirim)
+global.ytSessions = global.ytSessions || {}; // { [senderJid]: { url, expires } }
 
-// util kecil
-const isYt = (u='') => /(youtube\.com|youtu\.be)/i.test(u);
-const pickUrl = (data = {}) => {
-    // coba beberapa kemungkinan field yang sering dipakai API
-    return (
-        data.url ||
-        data.link ||
-        data.download_url ||
-        data.result ||
-        data.video ||
-        data.audio ||
-        null
-    );
-};
+function isYtUrl(u='') {
+  return /youtu\.be|youtube\.com/i.test(u);
+}
+
+function getSenderJid(m) {
+  return m.key.participant || m.key.remoteJid;
+}
+
+function setSession(sender, url) {
+  global.ytSessions[sender] = { url, expires: Date.now() + SESSION_TTL_MS };
+}
+
+function getSession(sender) {
+  const s = global.ytSessions[sender];
+  if (!s) return null;
+  if (Date.now() > s.expires) {
+    delete global.ytSessions[sender];
+    return null;
+  }
+  return s;
+}
+
+function clearSession(sender) {
+  delete global.ytSessions[sender];
+}
+
+async function sendReact(sock, from, key, emoji) {
+  try {
+    await sock.sendMessage(from, { react: { text: emoji, key } });
+  } catch {}
+}
 
 module.exports = async (sock, m, text, from) => {
-    const raw = (text || '').trim();
-    const low = raw.toLowerCase();
+  const raw = (text || '').trim();
+  const lower = raw.toLowerCase();
+  const sender = getSenderJid(m);
 
-    // 1) HANDLE /yt <url>
-    if (low.startsWith('/yt ')) {
-        const url = raw.slice(4).trim();
-        if (!isYt(url)) {
-            return sock.sendMessage(from, { text: '❌ Link YouTube nggak valid. Contoh:\n/yt https://youtu.be/abcDEF123' }, { quoted: m });
-        }
+  // ========== STEP 1: /yt <url> ==========
+  if (lower.startsWith('/yt ')) {
+    await sendReact(sock, from, m.key, '⏳');
 
-        // simpan state
-        global.__ytPending[from] = {
-            url,
-            ts: Date.now(),
-            promptKey: m.key // supaya reply bisa dicek
-        };
-
-        const msg = [
-            '📺 **YouTube Downloader**',
-            'Pilih format kiriman:',
-            '• Balas pesan ini dengan **/video** untuk MP4',
-            '• Atau **/audio** untuk MP3',
-            '',
-            `Default: video ${DEFAULT_VIDEO_QUALITY}, audio ${DEFAULT_AUDIO_QUALITY}.`,
-            'Tips: kalau ragu, pilih /video dulu 😉'
-        ].join('\n');
-
-        return sock.sendMessage(from, { text: msg }, { quoted: m });
+    const url = raw.slice(4).trim();
+    if (!isYtUrl(url)) {
+      await sendReact(sock, from, m.key, '❌');
+      return sock.sendMessage(from, { text: '❌ Link YouTube tidak valid. Contoh:\n/yt https://youtu.be/dQw4w9WgXcQ' }, { quoted: m });
     }
 
-    // 2) HANDLE /video atau /audio — HANYA jika membalas prompt /yt
-    if (low === '/video' || low === '/audio') {
-        const pend = global.__ytPending[from];
-        // harus ada state & harus reply pesan prompt (atau setidaknya masih dalam waktu)
-        const replyingToKey = m.message?.extendedTextMessage?.contextInfo?.stanzaId
-        || m.message?.extendedTextMessage?.contextInfo?.stanzaID
-        || m.message?.extendedTextMessage?.contextInfo?.quotedMessageId;
+    setSession(sender, url);
 
-        if (
-            !pend ||
-            (Date.now() - pend.ts) > EXP_MIN * 60 * 1000 ||
-            (replyingToKey && pend.promptKey?.id && replyingToKey !== pend.promptKey.id)
-        ) {
-            return sock.sendMessage(from, {
-                text: '⏳ Sesi YouTube kamu sudah habis / tidak valid.\nKirim ulang link dengan:\n/yt <link YouTube>'
-            }, { quoted: m });
-        }
+    await sock.sendMessage(from, {
+      text:
+`✅ Link diterima.
 
-        const want = low === '/video' ? 'video' : 'audio';
-        const quality = want === 'video' ? DEFAULT_VIDEO_QUALITY : DEFAULT_AUDIO_QUALITY;
-        const encUrl = encodeURIComponent(pend.url);
+Mau format apa?
+• Balas: */audio* [bitrate]  → contoh: /audio 128kbps
+• Balas: */video* [resolusi] → contoh: /video 480p
 
-        // react ⏳
-        try { await sock.sendMessage(from, { react: { text: '⏳', key: m.key } }); } catch {}
+Default:
+• Audio: ${AUDIO_QUALITY_DEFAULT}
+• Video: ${VIDEO_QUALITY_DEFAULT}
 
-        try {
-            const api = `https://api.neoxr.eu/api/youtube?url=${encUrl}&type=${want}&quality=${encodeURIComponent(quality)}&apikey=${NEOXR_KEY}`;
-            const { data: json } = await axios.get(api, { timeout: 60_000 });
+Tips:
+• Kamu _harus_ membalas pesan ini (reply). 
+• Perintah /audio /video hanya aktif 10 menit setelah /yt.`,
+    }, { quoted: m });
 
-            if (!json || json.status === false) {
-                const reason = json?.message || 'Gagal memproses.';
-                return sock.sendMessage(from, { text: `❌ ${reason}` }, { quoted: m });
-            }
+    await sendReact(sock, from, m.key, '✅');
+    return;
+  }
 
-            const fileUrl = pickUrl(json.data || {});
-            if (!fileUrl) {
-                return sock.sendMessage(from, { text: '❌ Link unduhan tidak ditemukan dari API.' }, { quoted: m });
-            }
+  // ========== STEP 2: /audio [bitrate] ==========
+  if (lower.startsWith('/audio')) {
+    await sendReact(sock, from, m.key, '⏳');
 
-            if (want === 'video') {
-                await sock.sendMessage(from, {
-                    video: { url: fileUrl },
-                    caption: `✅ YouTube → MP4 (${quality})\nJika macet, coba /audio atau resolusi lain.`
-                }, { quoted: m });
-            } else {
-                await sock.sendMessage(from, {
-                    audio: { url: fileUrl },
-                    mimetype: 'audio/mpeg',
-                    ptt: false
-                }, { quoted: m });
-            }
-
-            // sukses → bersihkan state
-            delete global.__ytPending[from];
-        } catch (e) {
-            console.error('yt download error:', e?.message || e);
-            await sock.sendMessage(from, { text: '❌ Gagal mengunduh. Coba lagi atau kirim ulang /yt.' }, { quoted: m });
-        } finally {
-            // react ✅
-            try { await sock.sendMessage(from, { react: { text: '✅', key: m.key } }); } catch {}
-        }
-
-        return;
+    const s = getSession(sender);
+    if (!s) {
+      await sendReact(sock, from, m.key, '❌');
+      return sock.sendMessage(from, { text: '❌ Belum ada sesi aktif.\nKetik: /yt <link YouTube> dulu ya.' }, { quoted: m });
     }
 
-    // kalau bukan /yt, /video, /audio → plugin ini diam
+    const parts = raw.split(/\s+/).slice(1);
+    const bitrate = (parts[0] || AUDIO_QUALITY_DEFAULT).toLowerCase(); // 128kbps, 192kbps, 320kbps
+
+    const endpoint = `https://api.neoxr.eu/api/youtube?url=${encodeURIComponent(s.url)}&type=audio&quality=${encodeURIComponent(bitrate)}&apikey=${NEOXR_KEY}`;
+
+    try {
+      const meta = await axios.get(endpoint, { timeout: AXIOS_TIMEOUT_MS });
+      const j = meta.data || {};
+      if (!j.status) throw new Error(j.message || 'API error');
+
+      // Cari field url hasil
+      const downloadUrl = j.data?.url || j.data?.audio || j.result?.url || j.result;
+      if (!downloadUrl) throw new Error('URL unduhan tidak ditemukan.');
+
+      // Ambil buffer
+      const file = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: AXIOS_TIMEOUT_MS });
+      const buf = Buffer.from(file.data);
+
+      await sock.sendMessage(from, {
+        audio: buf,
+        mimetype: 'audio/mpeg',
+        ptt: false
+      }, { quoted: m });
+
+      await sendReact(sock, from, m.key, '✅');
+      // (Opsional) jangan clear biar user bisa ganti kualitas tanpa /yt ulang.
+      return;
+    } catch (e) {
+      console.error('yt audio error:', e?.message || e);
+      await sendReact(sock, from, m.key, '❌');
+      return sock.sendMessage(from, { text: `❌ Gagal unduh audio.\nAlasan: ${e.message || e}` }, { quoted: m });
+    }
+  }
+
+  // ========== STEP 3: /video [resolusi] ==========
+  if (lower.startsWith('/video')) {
+    await sendReact(sock, from, m.key, '⏳');
+
+    const s = getSession(sender);
+    if (!s) {
+      await sendReact(sock, from, m.key, '❌');
+      return sock.sendMessage(from, { text: '❌ Belum ada sesi aktif.\nKetik: /yt <link YouTube> dulu ya.' }, { quoted: m });
+    }
+
+    const parts = raw.split(/\s+/).slice(1);
+    const quality = (parts[0] || VIDEO_QUALITY_DEFAULT).toLowerCase(); // 360p, 480p, 720p, ...
+
+    const endpoint = `https://api.neoxr.eu/api/youtube?url=${encodeURIComponent(s.url)}&type=video&quality=${encodeURIComponent(quality)}&apikey=${NEOXR_KEY}`;
+
+    try {
+      const meta = await axios.get(endpoint, { timeout: AXIOS_TIMEOUT_MS });
+      const j = meta.data || {};
+      if (!j.status) throw new Error(j.message || 'API error');
+
+      // Cari field url hasil
+      const downloadUrl = j.data?.url || j.data?.video || j.result?.url || j.result;
+      if (!downloadUrl) throw new Error('URL unduhan tidak ditemukan.');
+
+      // Ambil buffer
+      const file = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: AXIOS_TIMEOUT_MS });
+      const buf = Buffer.from(file.data);
+
+      await sock.sendMessage(from, {
+        video: buf,
+        mimetype: 'video/mp4',
+        caption: `✅ Video ${quality.toUpperCase()}`
+      }, { quoted: m });
+
+      await sendReact(sock, from, m.key, '✅');
+      // (Opsional) tetap simpan sesi agar user bisa minta kualitas lain.
+      return;
+    } catch (e) {
+      console.error('yt video error:', e?.message || e);
+      await sendReact(sock, from, m.key, '❌');
+      return sock.sendMessage(from, { text: `❌ Gagal unduh video.\nAlasan: ${e.message || e}` }, { quoted: m });
+    }
+  }
+
+  // selain 3 command di atas: plugin ini diam
 };
