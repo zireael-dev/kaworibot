@@ -3,13 +3,17 @@
  * Sebuah permainan cerita interaktif dinamis yang dibuat oleh AI (Gemini).
  *
  * Commands:
- * /story          -> Memulai cerita baru.
+ * /story [nama]   -> Memulai cerita baru, opsional dengan nama karakter.
  * /pilih <A/B>    -> Memilih opsi dalam cerita.
  * /stop           -> Menghentikan cerita saat ini.
  */
 
-// FIX: Menggunakan node-fetch untuk stabilitas request di server
-const fetch = require('node-fetch');
+const axios = require('axios');
+
+// --- KONFIGURASI ---
+// Dapatkan API Key gratis Anda dari Google AI Studio: https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = 'AIzaSyB4r-S4m0F60245QEuJUpS7_EKmzjcr8LU'; // <-- WAJIB DIISI!
+// --- ---
 
 const b = (t) => `*${t}*`;
 const i = (t) => `_${t}_`;
@@ -26,22 +30,20 @@ function ensureDB() {
  * @returns {object|null} Objek berisi { text, choiceA, choiceB, isEnd } atau null jika gagal.
  */
 async function generateStoryNode(history) {
-    const apiKey = ""; // Disediakan oleh environment Canvas
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'GANTI_DENGAN_API_KEY_ANDA') {
+        console.error("Gemini API Key belum diisi di dalam script.");
+        return null;
+    }
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: history })
+        const response = await axios.post(apiUrl, {
+            contents: history
+        }, {
+            headers: { 'Content-Type': 'application/json' }
         });
-        
-        if (!response.ok) {
-            console.error("API request failed with status:", response.status);
-            return null;
-        }
 
-        const result = await response.json();
+        const result = response.data;
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!text) {
@@ -64,11 +66,11 @@ async function generateStoryNode(history) {
             console.error("Failed to parse AI response:", text);
             return null; // Gagal mem-parsing
         }
-        
+
         return { text: storyText, choiceA, choiceB, isEnd: false };
 
     } catch (error) {
-        console.error("Error calling Gemini API:", error);
+        console.error("Error calling Gemini API:", error.response ? error.response.data : error.message);
         return null;
     }
 }
@@ -97,23 +99,42 @@ module.exports = async (sock, m, text, from) => {
     const lower = raw.toLowerCase();
     const session = global.db.storytime[from];
 
-    if (lower === '/story' || lower === '/mulai') {
+    // --- FITUR BARU: Kunci Sesi (Game Lock) ---
+    const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai'];
+    const isStoryCommand = allowedCommands.some(cmd => lower.startsWith(cmd));
+
+    if (session && !isStoryCommand) {
+        return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita sebelum menggunakan perintah lain." }, { quoted: m });
+    }
+    // --- ---
+
+    if (lower.startsWith('/story') || lower.startsWith('/mulai')) {
         if (session) {
-            return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini." }, { quoted: m });
+            return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini sebelum memulai yang baru." }, { quoted: m });
         }
-        
+
+        // --- FITUR BARU: Opsi Nama Karakter ---
+        const command = lower.startsWith('/story') ? '/story' : '/mulai';
+        const customName = raw.slice(command.length).trim();
+
         await sock.sendMessage(from, { text: "Membuat petualangan baru untukmu..." }, { quoted: m });
 
-        const initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat. Berikan narasi awal, lalu berikan dua pilihan (A dan B) untuk pemain. Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
+        let initialPrompt;
+        if (customName) {
+            initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${customName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B) untuk pemain. Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
+        } else {
+            initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat. Berikan narasi awal, lalu berikan dua pilihan (A dan B) untuk pemain. Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
+        }
+
         const history = [{ role: "user", parts: [{ text: initialPrompt }] }];
-        
+
         const storyNode = await generateStoryNode(history);
 
         if (storyNode) {
-            global.db.storytime[from] = { history, currentNode: storyNode };
+            global.db.storytime[from] = { history, currentNode: storyNode, characterName: customName || null };
             return sendStoryNode(sock, from, m, storyNode);
         } else {
-            return sock.sendMessage(from, { text: "❌ Gagal memulai cerita. Coba lagi nanti." }, { quoted: m });
+            return sock.sendMessage(from, { text: "❌ Gagal memulai cerita. Pastikan API Key sudah benar." }, { quoted: m });
         }
     }
 
@@ -124,15 +145,21 @@ module.exports = async (sock, m, text, from) => {
 
         const choiceLabel = raw.slice(7).trim().toUpperCase();
         if (choiceLabel !== 'A' && choiceLabel !== 'B') {
-             return sock.sendMessage(from, { text: `❌ Pilihan tidak valid. Silakan pilih */pilih A* atau */pilih B*.` }, { quoted: m });
+            return sock.sendMessage(from, { text: `❌ Pilihan tidak valid. Silakan pilih */pilih A* atau */pilih B*.` }, { quoted: m });
         }
 
         await sock.sendMessage(from, { react: { text: '📖', key: m.key } });
 
+        const characterName = session.characterName;
         const chosenText = choiceLabel === 'A' ? session.currentNode.choiceA : session.currentNode.choiceB;
-        const nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
-        
-        // Tambahkan prompt terakhir dan pilihan ke riwayat
+
+        let nextPrompt;
+        if (characterName) {
+            nextPrompt = `Karakter '${characterName}' memilih: "${chosenText}". Lanjutkan cerita. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
+        } else {
+            nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
+        }
+
         session.history.push({ role: "model", parts: [{ text: `${session.currentNode.text}\nA. ${session.currentNode.choiceA}\nB. ${session.currentNode.choiceB}` }] });
         session.history.push({ role: "user", parts: [{ text: nextPrompt }] });
 
