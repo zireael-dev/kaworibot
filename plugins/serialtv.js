@@ -41,7 +41,7 @@ function ensureDB() {
 }
 
 /**
- * Mengambil data serial TV dari The Movie Database (TMDb)
+ * Mengambil data serial TV dan daftar episodenya dari The Movie Database (TMDb)
  * @param {string} seriesTitle Judul serial yang akan dicari.
  * @returns {object|null} Data serial dari TMDb atau null jika tidak ditemukan.
  */
@@ -69,10 +69,29 @@ async function getTMDbSeriesDetails(seriesTitle) {
 
         if (data.results && data.results.length > 0) {
             const series = data.results[0];
+            const seriesId = series.id;
+            let episodes = [];
+
+            try {
+                // Ambil detail untuk season 1 (umumnya yang paling relevan untuk batch)
+                const seasonDetailsUrl = `https://api.themoviedb.org/3/tv/${seriesId}/season/1?api_key=${TMDB_API_KEY}&language=id-ID`;
+                const { data: seasonData } = await client.get(seasonDetailsUrl);
+                if (seasonData.episodes) {
+                    episodes = seasonData.episodes.map(ep => ({
+                        number: ep.episode_number,
+                        title: ep.name
+                    }));
+                }
+            } catch (seasonError) {
+                console.error("Tidak bisa mengambil detail season dari TMDb:", seasonError.message);
+                // Tidak apa-apa jika gagal, kita hanya tidak akan punya judul episode
+            }
+
             return {
                 title: series.name || seriesTitle,
                 synopsis: series.overview || 'Sinopsis tidak tersedia dalam bahasa Indonesia.',
-                poster: series.poster_path ? `https://image.tmdb.org/t/p/w500${series.poster_path}` : null
+                poster: series.poster_path ? `https://image.tmdb.org/t/p/w500${series.poster_path}` : null,
+                episodes: episodes // Kembalikan daftar episode
             };
         }
         return null;
@@ -108,7 +127,6 @@ module.exports = async (sock, m, text, from) => {
                 const linkElement = $(el).find('a.tip');
                 const title = linkElement.attr('title');
                 const url = linkElement.attr('href');
-                // Filter hanya untuk yang terlihat seperti serial TV
                 if (title && url && (title.toLowerCase().includes('episode') || title.toLowerCase().includes('season'))) {
                     results.push({ title, url });
                 }
@@ -169,13 +187,16 @@ module.exports = async (sock, m, text, from) => {
             const title = tmdbDetails?.title || $('h1.entry-title').text().trim();
             const synopsis = tmdbDetails?.synopsis || $('div[itemprop="description"] p').map((i, el) => $(el).text()).get().join('\n\n').trim();
             const poster = tmdbDetails?.poster || $('img.attachment-post-thumbnail').attr('src');
+            const tmdbEpisodes = tmdbDetails?.episodes || [];
 
-            const episodes = [];
-            // Selector ini mencari setiap 'div' yang berisi link-link episode
+            const scrapedEpisodes = [];
             $('div.download-eps').each((idx, el) => {
                 const episodeTitleRaw = $(el).find('p > strong').text().trim().replace(':', '');
+                const episodeNumberMatch = episodeTitleRaw.match(/episode\s*(\d+)/i);
+                if (!episodeNumberMatch) return;
+
+                const episodeNumber = parseInt(episodeNumberMatch[1]);
                 const links = [];
-                
                 $(el).find('a').each((a_idx, a_el) => {
                     const provider = $(a_el).text().trim();
                     const link = $(a_el).attr('href');
@@ -184,42 +205,45 @@ module.exports = async (sock, m, text, from) => {
                     }
                 });
 
-                if (episodeTitleRaw && links.length > 0) {
-                    episodes.push({ title: episodeTitleRaw, links });
+                if (links.length > 0) {
+                    scrapedEpisodes.push({ number: episodeNumber, links });
                 }
             });
 
             let linksText = '';
-            if (episodes.length > 0) {
-                 episodes.slice(0, MAX_EPISODES_SHOW).forEach(ep => {
-                    linksText += `${b(ep.title)}\n`;
-                    // Kelompokkan link berdasarkan resolusi
+            if (scrapedEpisodes.length > 0) {
+                const episodesToShow = scrapedEpisodes.slice(0, MAX_EPISODES_SHOW);
+
+                for (const scrapedEp of episodesToShow) {
+                    const tmdbEp = tmdbEpisodes.find(t => t.number === scrapedEp.number);
+                    const episodeTitle = (tmdbEp && tmdbEp.title && tmdbEp.title.toLowerCase() !== `episode ${scrapedEp.number}`) 
+                        ? tmdbEp.title 
+                        : `Episode ${String(scrapedEp.number).padStart(2, '0')}`;
+                    
+                    linksText += `${b(`${scrapedEp.number}. ${episodeTitle}`)}\n`;
+
                     const linksByQuality = {};
-                    ep.links.forEach(l => {
-                        // Coba tebak resolusi dari nama provider
+                    scrapedEp.links.forEach(l => {
                         const match = l.provider.match(/(\d{3,4}p)/i);
                         const quality = match ? match[1].toUpperCase() : 'Lainnya';
                         if (!linksByQuality[quality]) {
                             linksByQuality[quality] = [];
                         }
-                        linksByQuality[quality].push(`• ${l.provider}: ${l.link}`);
+                        linksByQuality[quality].push(l);
                     });
 
-                    // Urutkan kualitas (misal: 1080P, 720P, ...)
-                    const sortedQualities = Object.keys(linksByQuality).sort((a, b) => {
-                        const numA = parseInt(a) || 0;
-                        const numB = parseInt(b) || 0;
-                        return numB - numA;
-                    });
-
+                    const sortedQualities = Object.keys(linksByQuality).sort((a, b) => (parseInt(b) || 0) - (parseInt(a) || 0));
+                    
                     for (const quality of sortedQualities) {
-                         linksText += linksByQuality[quality].join('\n') + '\n';
+                        linksText += `${i(quality)}:\n`;
+                        linksText += linksByQuality[quality].map(link => `• ${link.provider}: ${link.link}`).join('\n');
+                        linksText += '\n';
                     }
                     linksText += '\n';
-                });
+                }
 
-                if (episodes.length > MAX_EPISODES_SHOW) {
-                    linksText += `...dan ${episodes.length - MAX_EPISODES_SHOW} episode lainnya.`;
+                if (scrapedEpisodes.length > MAX_EPISODES_SHOW) {
+                    linksText += `...dan ${scrapedEpisodes.length - MAX_EPISODES_SHOW} episode lainnya.`;
                 }
             } else {
                 linksText = 'Daftar episode tidak ditemukan.';
