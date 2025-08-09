@@ -3,7 +3,7 @@
  * Sebuah permainan cerita interaktif dinamis yang dibuat oleh AI (Gemini).
  *
  * Commands:
- * /story [nama]   -> Memulai cerita baru, opsional dengan nama karakter.
+ * /story          -> Memulai sesi cerita dan meminta nama karakter.
  * /pilih <A/B>    -> Memilih opsi dalam cerita.
  * /stop           -> Menghentikan cerita saat ini.
  */
@@ -42,7 +42,7 @@ async function generateStoryNode(history) {
         }, {
             headers: { 'Content-Type': 'application/json' }
         });
-
+        
         const result = response.data;
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -66,7 +66,7 @@ async function generateStoryNode(history) {
             console.error("Failed to parse AI response:", text);
             return null; // Gagal mem-parsing
         }
-
+        
         return { text: storyText, choiceA, choiceB, isEnd: false };
 
     } catch (error) {
@@ -99,67 +99,70 @@ module.exports = async (sock, m, text, from) => {
     const lower = raw.toLowerCase();
     const session = global.db.storytime[from];
 
-    // --- FITUR BARU: Kunci Sesi (Game Lock) ---
-    const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai'];
-    const isStoryCommand = allowedCommands.some(cmd => lower.startsWith(cmd));
-
-    if (session && !isStoryCommand) {
-        return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita sebelum menggunakan perintah lain." }, { quoted: m });
-    }
-    // --- ---
-
-    if (lower.startsWith('/story') || lower.startsWith('/mulai')) {
-        if (session) {
-            return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini sebelum memulai yang baru." }, { quoted: m });
-        }
-
-        // --- FITUR BARU: Opsi Nama Karakter ---
-        const command = lower.startsWith('/story') ? '/story' : '/mulai';
-        const customName = raw.slice(command.length).trim();
-
+    // Cek jika ada sesi yang menunggu nama
+    if (session && session.state === 'awaiting_name') {
+        const characterName = lower === 'acak' ? null : raw;
+        
         await sock.sendMessage(from, { text: "Membuat petualangan baru untukmu..." }, { quoted: m });
 
         let initialPrompt;
-        if (customName) {
-            initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${customName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B) untuk pemain. Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
+        if (characterName) {
+            initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${characterName}'. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya, yaitu '${characterName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
         } else {
-            initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat. Berikan narasi awal, lalu berikan dua pilihan (A dan B) untuk pemain. Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
+            initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat dengan karakter yang namanya dibuat oleh AI. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
         }
-
+        
         const history = [{ role: "user", parts: [{ text: initialPrompt }] }];
-
         const storyNode = await generateStoryNode(history);
 
         if (storyNode) {
-            global.db.storytime[from] = { history, currentNode: storyNode, characterName: customName || null };
+            session.state = 'playing';
+            session.history = history;
+            session.currentNode = storyNode;
+            session.characterName = characterName;
             return sendStoryNode(sock, from, m, storyNode);
         } else {
+            delete global.db.storytime[from];
             return sock.sendMessage(from, { text: "❌ Gagal memulai cerita. Pastikan API Key sudah benar." }, { quoted: m });
         }
     }
 
+    if (lower === '/story' || lower === '/mulai') {
+        if (session) {
+            return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini sebelum memulai yang baru." }, { quoted: m });
+        }
+        
+        // Memulai sesi baru dengan state 'awaiting_name'
+        global.db.storytime[from] = {
+            state: 'awaiting_name',
+            ts: Date.now()
+        };
+        
+        return sock.sendMessage(from, { text: "Masukkan nama untuk karaktermu, atau ketik *acak* untuk nama otomatis." }, { quoted: m });
+    }
+
     if (lower.startsWith('/pilih ')) {
-        if (!session) {
+        if (!session || session.state !== 'playing') {
             return sock.sendMessage(from, { text: "Tidak ada petualangan yang sedang berjalan. Ketik */story* untuk memulai." }, { quoted: m });
         }
 
         const choiceLabel = raw.slice(7).trim().toUpperCase();
         if (choiceLabel !== 'A' && choiceLabel !== 'B') {
-            return sock.sendMessage(from, { text: `❌ Pilihan tidak valid. Silakan pilih */pilih A* atau */pilih B*.` }, { quoted: m });
+             return sock.sendMessage(from, { text: `❌ Pilihan tidak valid. Silakan pilih */pilih A* atau */pilih B*.` }, { quoted: m });
         }
 
         await sock.sendMessage(from, { react: { text: '📖', key: m.key } });
 
         const characterName = session.characterName;
         const chosenText = choiceLabel === 'A' ? session.currentNode.choiceA : session.currentNode.choiceB;
-
+        
         let nextPrompt;
         if (characterName) {
-            nextPrompt = `Karakter '${characterName}' memilih: "${chosenText}". Lanjutkan cerita. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
+             nextPrompt = `Karakter '${characterName}' memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi menggunakan kata ganti orang kedua ('Anda'/'kamu'), dan dialog NPC menggunakan nama '${characterName}'. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
         } else {
-            nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
+             nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi menggunakan kata ganti orang kedua ('Anda'/'kamu'), dan dialog NPC menggunakan nama karakter yang sudah dibuat AI. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
         }
-
+        
         session.history.push({ role: "model", parts: [{ text: `${session.currentNode.text}\nA. ${session.currentNode.choiceA}\nB. ${session.currentNode.choiceB}` }] });
         session.history.push({ role: "user", parts: [{ text: nextPrompt }] });
 
