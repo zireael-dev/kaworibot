@@ -4,6 +4,8 @@
  *
  * Commands:
  * /story          -> Memulai sesi cerita dan meminta nama karakter.
+ * /nama <nama>    -> Menentukan nama karakter.
+ * /acak           -> Menggunakan nama acak dari AI.
  * /pilih <A/B>    -> Memilih opsi dalam cerita.
  * /stop           -> Menghentikan cerita saat ini.
  */
@@ -93,52 +95,68 @@ function sendStoryNode(sock, from, m, storyNode) {
     return sock.sendMessage(from, { text: message.trim() }, { quoted: m });
 }
 
+async function startStory(sock, m, from, characterName) {
+    await sock.sendMessage(from, { text: "Membuat petualangan baru untukmu..." }, { quoted: m });
+
+    let initialPrompt;
+    if (characterName) {
+        initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${characterName}'. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya, yaitu '${characterName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
+    } else {
+        initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat dengan karakter yang namanya dibuat oleh AI. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
+    }
+    
+    const history = [{ role: "user", parts: [{ text: initialPrompt }] }];
+    const storyNode = await generateStoryNode(history);
+
+    if (storyNode) {
+        const session = global.db.storytime[from];
+        session.state = 'playing';
+        session.history = history;
+        session.currentNode = storyNode;
+        session.characterName = characterName;
+        return sendStoryNode(sock, from, m, storyNode);
+    } else {
+        delete global.db.storytime[from];
+        return sock.sendMessage(from, { text: "❌ Gagal memulai cerita. Pastikan API Key sudah benar." }, { quoted: m });
+    }
+}
+
 module.exports = async (sock, m, text, from) => {
     ensureDB();
     const raw = (text || '').trim();
     const lower = raw.toLowerCase();
     const session = global.db.storytime[from];
 
-    // Cek jika ada sesi yang menunggu nama
-    if (session && session.state === 'awaiting_name') {
-        const characterName = lower === 'acak' ? null : raw;
-        
-        await sock.sendMessage(from, { text: "Membuat petualangan baru untukmu..." }, { quoted: m });
-
-        let initialPrompt;
-        if (characterName) {
-            initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${characterName}'. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya, yaitu '${characterName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
-        } else {
-            initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat dengan karakter yang namanya dibuat oleh AI. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
-        }
-        
-        const history = [{ role: "user", parts: [{ text: initialPrompt }] }];
-        const storyNode = await generateStoryNode(history);
-
-        if (storyNode) {
-            session.state = 'playing';
-            session.history = history;
-            session.currentNode = storyNode;
-            session.characterName = characterName;
-            return sendStoryNode(sock, from, m, storyNode);
-        } else {
-            delete global.db.storytime[from];
-            return sock.sendMessage(from, { text: "❌ Gagal memulai cerita. Pastikan API Key sudah benar." }, { quoted: m });
-        }
-    }
-
     if (lower === '/story' || lower === '/mulai') {
         if (session) {
             return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini sebelum memulai yang baru." }, { quoted: m });
         }
         
-        // Memulai sesi baru dengan state 'awaiting_name'
-        global.db.storytime[from] = {
-            state: 'awaiting_name',
-            ts: Date.now()
-        };
+        global.db.storytime[from] = { state: 'awaiting_name', ts: Date.now() };
         
-        return sock.sendMessage(from, { text: "Masukkan nama untuk karaktermu, atau ketik *acak* untuk nama otomatis." }, { quoted: m });
+        const promptMessage = [
+            "Petualangan akan segera dimulai!",
+            "Ketik nama untuk karaktermu atau pilih nama acak.",
+            LINE,
+            "➡️ */nama <namamu>*",
+            "➡️ */acak*"
+        ].join('\n');
+        return sock.sendMessage(from, { text: promptMessage }, { quoted: m });
+    }
+
+    if (session && session.state === 'awaiting_name') {
+        if (lower.startsWith('/nama ')) {
+            const characterName = raw.slice(6).trim();
+            if (!characterName) {
+                return sock.sendMessage(from, { text: "❌ Nama tidak boleh kosong. Contoh: */nama Zireael*" }, { quoted: m });
+            }
+            return startStory(sock, m, from, characterName);
+        }
+        if (lower === '/acak') {
+            return startStory(sock, m, from, null); // null for random name
+        }
+        // Abaikan pesan lain jika sedang menunggu nama
+        return;
     }
 
     if (lower.startsWith('/pilih ')) {
