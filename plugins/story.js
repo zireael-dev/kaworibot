@@ -84,7 +84,7 @@ function sendStoryNode(sock, from, m, storyNode) {
     let message = `${i(storyNode.text)}\n${LINE}\n`;
 
     if (!storyNode.isEnd) {
-        message += `${b('Apa yang akan Anda lakukan?')}\n`;
+        message += `${b('Apa yang akan kamu lakukan?')}\n`;
         message += `➡️ */pilih A* - ${storyNode.choiceA}\n`;
         message += `➡️ */pilih B* - ${storyNode.choiceB}\n`;
     } else {
@@ -100,9 +100,9 @@ async function startStory(sock, m, from, characterName) {
 
     let initialPrompt;
     if (characterName) {
-        initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${characterName}'. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya, yaitu '${characterName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
+        initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${characterName}'. PENTING: Saat menarasikan cerita, gunakan gaya bahasa informal dan kata ganti orang kedua seperti 'kamu', '-mu', atau 'dirimu' (contoh: 'angin menerpa wajahmu', 'kamu menemukan sebuah pedang'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya, yaitu '${characterName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
     } else {
-        initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat dengan karakter yang namanya dibuat oleh AI. PENTING: Saat menarasikan cerita, selalu gunakan kata ganti orang kedua (seperti 'Anda' atau 'kamu'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
+        initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat dengan karakter yang namanya dibuat oleh AI. PENTING: Saat menarasikan cerita, gunakan gaya bahasa informal dan kata ganti orang kedua seperti 'kamu', '-mu', atau 'dirimu' (contoh: 'angin menerpa wajahmu', 'kamu menemukan sebuah pedang'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
     }
     
     const history = [{ role: "user", parts: [{ text: initialPrompt }] }];
@@ -129,7 +129,7 @@ module.exports = async (sock, m, text, from) => {
 
     if (lower === '/story' || lower === '/mulai') {
         if (session) {
-            return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini sebelum memulai yang baru." }, { quoted: m });
+            return sock.sendMessage(from, { text: "Kamu sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini sebelum memulai yang baru." }, { quoted: m });
         }
         
         global.db.storytime[from] = { state: 'awaiting_name', ts: Date.now() };
@@ -148,7 +148,7 @@ module.exports = async (sock, m, text, from) => {
         if (lower.startsWith('/nama ')) {
             const characterName = raw.slice(6).trim();
             if (!characterName) {
-                return sock.sendMessage(from, { text: "❌ Nama tidak boleh kosong. Contoh: */nama Zireael*" }, { quoted: m });
+                return sock.sendMessage(from, { text: "❌ Nama tidak boleh kosong. Contoh: */nama Zirael*" }, { quoted: m });
             }
             return startStory(sock, m, from, characterName);
         }
@@ -176,9 +176,9 @@ module.exports = async (sock, m, text, from) => {
         
         let nextPrompt;
         if (characterName) {
-             nextPrompt = `Karakter '${characterName}' memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi menggunakan kata ganti orang kedua ('Anda'/'kamu'), dan dialog NPC menggunakan nama '${characterName}'. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
+             nextPrompt = `Karakter '${characterName}' memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi menggunakan gaya bahasa informal dan kata ganti orang kedua ('kamu', '-mu', 'dirimu'), dan dialog NPC menggunakan nama '${characterName}'. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
         } else {
-             nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi menggunakan kata ganti orang kedua ('Anda'/'kamu'), dan dialog NPC menggunakan nama karakter yang sudah dibuat AI. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
+             nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi menggunakan gaya bahasa informal dan kata ganti orang kedua ('kamu', '-mu', 'dirimu'), dan dialog NPC menggunakan nama karakter yang sudah dibuat AI. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
         }
         
         session.history.push({ role: "model", parts: [{ text: `${session.currentNode.text}\nA. ${session.currentNode.choiceA}\nB. ${session.currentNode.choiceB}` }] });
