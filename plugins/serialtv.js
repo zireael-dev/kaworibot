@@ -19,6 +19,7 @@ const cheerio = require('cheerio');
 const TMDB_API_KEY = '6c6e6a890d39cfe40a8d8e22c81de2b3'; // <-- WAJIB DIISI!
 const BASE_URL = 'https://movieku.fit';
 const MAX_SHOW = 10;
+const MAX_EPISODES_SHOW = 20; // Batas episode yang ditampilkan
 // --- ---
 
 const b = (t) => `*${t}*`;
@@ -50,8 +51,11 @@ async function getTMDbSeriesDetails(seriesTitle) {
         return null;
     }
     try {
-        // Membersihkan judul dari embel-embel episode/end
-        seriesTitle = seriesTitle.replace(/episode\s*\d{1,2}-\d{1,2}\s*end/i, '').trim();
+        // Membersihkan judul dari embel-embel episode/end/season
+        seriesTitle = seriesTitle
+            .replace(/episode\s*\d{1,2}-\d{1,2}\s*end/i, '')
+            .replace(/season\s*\d{1,2}/i, '')
+            .trim();
         
         let year = '';
         const yearMatch = seriesTitle.match(/\((\d{4})\)/);
@@ -167,10 +171,11 @@ module.exports = async (sock, m, text, from) => {
             const poster = tmdbDetails?.poster || $('img.attachment-post-thumbnail').attr('src');
 
             const episodes = [];
-            // Mencari link episode di dalam div 'smokeddl' atau 'download-eps'
-            $('#smokeddl .smokeurl p, div.download-eps p').each((idx, el) => {
-                const episodeTitle = $(el).find('strong').text().trim();
+            // Selector ini mencari setiap 'div' yang berisi link-link episode
+            $('div.download-eps').each((idx, el) => {
+                const episodeTitleRaw = $(el).find('p > strong').text().trim().replace(':', '');
                 const links = [];
+                
                 $(el).find('a').each((a_idx, a_el) => {
                     const provider = $(a_el).text().trim();
                     const link = $(a_el).attr('href');
@@ -178,20 +183,43 @@ module.exports = async (sock, m, text, from) => {
                         links.push({ provider, link });
                     }
                 });
-                if (episodeTitle && links.length > 0) {
-                    episodes.push({ title: episodeTitle, links });
+
+                if (episodeTitleRaw && links.length > 0) {
+                    episodes.push({ title: episodeTitleRaw, links });
                 }
             });
 
             let linksText = '';
             if (episodes.length > 0) {
-                 episodes.slice(0, 15).forEach(ep => { // Batasi 15 episode agar tidak terlalu panjang
+                 episodes.slice(0, MAX_EPISODES_SHOW).forEach(ep => {
                     linksText += `${b(ep.title)}\n`;
-                    const links = ep.links.map(l => `• ${l.provider}: ${l.link}`).join('\n');
-                    linksText += `${links}\n\n`;
+                    // Kelompokkan link berdasarkan resolusi
+                    const linksByQuality = {};
+                    ep.links.forEach(l => {
+                        // Coba tebak resolusi dari nama provider
+                        const match = l.provider.match(/(\d{3,4}p)/i);
+                        const quality = match ? match[1].toUpperCase() : 'Lainnya';
+                        if (!linksByQuality[quality]) {
+                            linksByQuality[quality] = [];
+                        }
+                        linksByQuality[quality].push(`• ${l.provider}: ${l.link}`);
+                    });
+
+                    // Urutkan kualitas (misal: 1080P, 720P, ...)
+                    const sortedQualities = Object.keys(linksByQuality).sort((a, b) => {
+                        const numA = parseInt(a) || 0;
+                        const numB = parseInt(b) || 0;
+                        return numB - numA;
+                    });
+
+                    for (const quality of sortedQualities) {
+                         linksText += linksByQuality[quality].join('\n') + '\n';
+                    }
+                    linksText += '\n';
                 });
-                if (episodes.length > 15) {
-                    linksText += `...dan ${episodes.length - 15} episode lainnya.`;
+
+                if (episodes.length > MAX_EPISODES_SHOW) {
+                    linksText += `...dan ${episodes.length - MAX_EPISODES_SHOW} episode lainnya.`;
                 }
             } else {
                 linksText = 'Daftar episode tidak ditemukan.';
