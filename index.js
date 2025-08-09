@@ -71,7 +71,7 @@ if (fs.existsSync(pluginsDir)) {
 console.log('\n✅ KaworiBot plugin system ready!\n');
 
 // Watermark default (untuk greeting/menu/dll)
-const watermark = '⫷ ᴋᴀᴡᴏʀɪ-ʙᴏᴛ, ᴀ sɪᴍᴘʟᴇ ᴡʜᴀᴛsᴀᴘᴘ ʙᴏᴛ ᴍᴀᴅᴇ ʙʏ ʏᴜsʀɪʟ ғᴀʟᴀʜ ⫸';
+const watermark = '⫷ ᴋᴀᴡᴏʀɪ-ʙᴏᴛ, ᴀ sɪᴍᴘʟᴇ ᴡʜᴀᴛsᴀᴘᴘ ʙᴏᴛ ᴍᴀᴅᴇ ʙʏ ᴢɪʀᴇᴀᴇʟ ⫸';
 
 // Greeting function
 function greetingWithEmoji(name) {
@@ -168,7 +168,7 @@ async function startBot() {
     const storySession = global.db.storytime[from];
 
     if (storySession) {
-        const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai'];
+        const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai', '/nama', '/acak'];
         const isStoryCommand = allowedCommands.some(cmd => lower.startsWith(cmd));
         
         // Jika sesi ada DAN perintahnya BUKAN perintah cerita
