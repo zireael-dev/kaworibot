@@ -3,12 +3,16 @@
  * Command: /brat <text>  (max 30 char)
  * Output: sticker brat dengan EXIF packname/author
  *
- * npm i axios
+ * FIX: Menggunakan wa-sticker-formatter untuk memastikan kompatibilitas
+ * di semua perangkat dan penyematan EXIF yang benar.
+ *
+ * npm i axios wa-sticker-formatter
  */
 
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { Sticker } = require('wa-sticker-formatter');
 
 const API_KEY = 'UCIELL'; // ganti kalau perlu
 
@@ -16,7 +20,7 @@ module.exports = async (sock, m, text, from) => {
   const raw = (text || '').trim();
   const lc = raw.toLowerCase();
 
-  // Hanya trigger jika diawali '/brat '
+  // Hanya trigger jika diawali '/brat'
   if (!lc.startsWith('/brat')) return;
 
   // Ambil argumen setelah '/brat'
@@ -32,14 +36,15 @@ module.exports = async (sock, m, text, from) => {
   try { await sock.sendMessage(from, { react: { text: '⏳', key: m.key } }); } catch {}
 
   // Panggil API neoxr
-  let data;
+  let imageUrl;
   try {
     const url = `https://api.neoxr.eu/api/brat?text=${encodeURIComponent(payload)}&apikey=${API_KEY}`;
     const resp = await axios.get(url);
-    data = resp.data;
+    const data = resp.data;
     if (!data || data.status !== true || !data.data?.url) {
       throw new Error(data?.msg || 'Gagal generate brat');
     }
+    imageUrl = data.data.url;
   } catch (e) {
     console.error('brat API error:', e?.response?.data || e.message);
     await sock.sendMessage(from, { text: '❌ Tidak bisa generate brat sticker sekarang.' }, { quoted: m });
@@ -47,19 +52,7 @@ module.exports = async (sock, m, text, from) => {
     return;
   }
 
-  // Ambil file result (webp/png) sebagai buffer
-  let stickerBuf;
-  try {
-    const fileResp = await axios.get(data.data.url, { responseType: 'arraybuffer' });
-    stickerBuf = Buffer.from(fileResp.data);
-  } catch (e) {
-    console.error('brat download error:', e.message);
-    await sock.sendMessage(from, { text: '❌ Gagal mengunduh hasil brat.' }, { quoted: m });
-    try { await sock.sendMessage(from, { react: { text: '❌', key: m.key } }); } catch {}
-    return;
-  }
-
-  // EXIF metadata (packname/author)
+  // Ambil EXIF metadata (packname/author)
   let packname = 'KaworiBot';
   let author = 'Zireael';
   try {
@@ -69,13 +62,22 @@ module.exports = async (sock, m, text, from) => {
     author   = exif.sk_author || cfg.stickerAuthor || (Array.isArray(cfg.owner) && cfg.owner[0]) || author;
   } catch {}
 
-  // Kirim sticker
+  // Buat stiker menggunakan wa-sticker-formatter
   try {
-    await sock.sendMessage(from, { sticker: stickerBuf, packname, author }, { quoted: m });
+    const sticker = new Sticker(imageUrl, {
+        pack: packname,
+        author: author,
+        type: 'full', // Tipe stiker (bisa 'full' atau 'crop')
+        quality: 70     // Kualitas stiker
+    });
+
+    // Kirim stiker yang sudah jadi
+    await sock.sendMessage(from, await sticker.toMessage(), { quoted: m });
     try { await sock.sendMessage(from, { react: { text: '✅', key: m.key } }); } catch {}
+
   } catch (e) {
     console.error('brat send sticker error:', e.message);
-    await sock.sendMessage(from, { text: '❌ Gagal mengirim sticker.' }, { quoted: m });
+    await sock.sendMessage(from, { text: '❌ Gagal membuat atau mengirim sticker.' }, { quoted: m });
     try { await sock.sendMessage(from, { react: { text: '❌', key: m.key } }); } catch {}
   }
 };
