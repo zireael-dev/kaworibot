@@ -84,6 +84,8 @@ module.exports = async (sock, m, text, from, watermark) => {
         LINE_THIN,
         '👑 Owner\n/menu owner',
         LINE_BOLD,
+        '💡 Bingung command? ketik /help',
+        LINE_BOLD,
         `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
       ];
       break;
@@ -257,6 +259,8 @@ module.exports = async (sock, m, text, from, watermark) => {
         '📬 Form aduan\n/aduan',
         LINE_THIN,
         '👑 Kontak owner\n/owner',
+        LINE_THIN,
+        '🆘 Bantuan lengkap\n/help',
         LINE_BOLD,
         '⬅️ Kembali\n/menu',
         LINE_BOLD,
