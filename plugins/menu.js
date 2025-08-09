@@ -76,6 +76,8 @@ module.exports = async (sock, m, text, from, watermark) => {
         LINE_THIN,
         '🔄 Converter\n/menu converter',
         LINE_THIN,
+        '🍿 Animanga & Watchlist\n/menu animanga',
+        LINE_THIN,
         '📚 Study Zone\n/menu study',
         LINE_THIN,
         '🎲 Fun Zone\n/menu fun',
@@ -201,7 +203,29 @@ module.exports = async (sock, m, text, from, watermark) => {
         `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
       ];
       break;
-
+      
+// =============== MENU ANIMANGA & WATCHLIST ===============
+case '/menu animanga':
+  lines = [
+    LINE_BOLD,
+    '🍿 ' + b('ANIMANGA & WATCHLIST'),
+    LINE_BOLD,
+    '📚 Manga\n/manga [judul]',
+    LINE_THIN,
+    '🎌 Anime\n/anime [judul]',
+    LINE_THIN,
+    '🎬 Film\n/film [judul]',
+    LINE_THIN,
+    '📺 Series\n/series [judul]',
+    LINE_THIN,
+    '🇰🇷 Drakor\n/drakor [judul]',
+    LINE_BOLD,
+    '⬅️ Kembali\n/menu',
+    LINE_BOLD,
+    `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+  ];
+  break;
+      
       // =============== MENU STUDY ===============
     case '/menu study':
       lines = [
