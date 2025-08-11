@@ -35,22 +35,6 @@ module.exports = async (sock, m, text, from, watermark) => {
       example: `${p}tiktok https://www.tiktok.com/@user/video/1234567890`,
       notes: 'Jika file besar, bisa terkirim sebagai link.'
     },
-    tikwm: {
-      title: 'TikTok With WM',
-      aliases: [],
-      what: 'Download TikTok dengan watermark.',
-      how: `${p}tikwm <link TT>`,
-      example: `${p}tikwm https://vt.tiktok.com/abcdef/`,
-      notes: 'Alternatif kalau no-WM bermasalah.'
-    },
-    tikmp3: {
-      title: 'TikTok MP3',
-      aliases: ['tikmp3'],
-      what: 'Ekstrak audio MP3 dari video TikTok.',
-      how: `${p}tikmp3 <link TT>`,
-      example: `${p}tikmp3 https://m.tiktok.com/v/12345.html`,
-      notes: 'Hasil berupa file MP3.'
-    },
     ig: {
       title: 'Instagram Downloader',
       aliases: ['igdl'],
@@ -99,7 +83,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Bikin stiker meme dari foto (teks atas|bawah, otomatis UPPERCASE).',
       how: `${p}smeme <atas>|<bawah> (reply/upload foto)`,
       example: `${p}smeme AKU LAPAR|TAPI MALAS MASAK`,
-      notes: 'Font Arial putih + outline hitam, size 100.'
+      notes: 'Font Arial putih + outline hitam.'
     },
     snobg: {
       title: 'Sticker No-Background',
@@ -125,6 +109,14 @@ module.exports = async (sock, m, text, from, watermark) => {
       example: `${p}toimg`,
       notes: 'Stiker animasi tidak didukung.'
     },
+    brat: {
+        title: 'Brat Generator',
+        aliases: [],
+        what: 'Membuat stiker meme "brat" dengan teks custom.',
+        how: `${p}brat <teks>`,
+        example: `${p}brat kawori bot`,
+        notes: 'Maksimal 30 karakter.'
+    },
     emojimix: {
       title: 'Emoji Mix',
       aliases: ['mix', 'emomix'],
@@ -135,29 +127,179 @@ module.exports = async (sock, m, text, from, watermark) => {
     },
 
     // ==== GROUP TOOLS ====
-    tageveryone: {
-      title: 'Tag Everyone',
-      aliases: ['hidetag'],
-      what: 'Tag semua member grup.',
-      how: `${p}tageveryone on  (atau off)`,
-      example: `${p}tageveryone on`,
-      notes: 'Hanya admin/owner bot dapat menyalakan.'
+    antidelete: {
+        title: 'Anti Delete',
+        aliases: [],
+        what: 'Mencegah pesan yang dihapus agar tidak hilang di grup.',
+        how: `${p}antidelete on|off`,
+        example: `${p}antidelete on`,
+        notes: 'Hanya admin. Bot harus online untuk menangkap pesan.'
     },
     antilink: {
       title: 'Anti Link',
       aliases: [],
       what: 'Auto deteksi & tindak link di grup.',
-      how: `${p}antilink on (atau off)`,
+      how: `${p}antilink on|off`,
       example: `${p}antilink on`,
       notes: 'Aksi lanjut (hapus/kick) menyesuaikan setting.'
+    },
+    antivritex: {
+        title: 'Anti Virtex',
+        aliases: [],
+        what: 'Mendeteksi & menindak pesan virtex/berbahaya.',
+        how: `${p}antivritex on|off`,
+        example: `${p}antivritex on`,
+        notes: 'Hanya admin.'
+    },
+    tageveryone: {
+      title: 'Tag Everyone',
+      aliases: ['hidetag'],
+      what: 'Tag semua member grup.',
+      how: `${p}tageveryone <pesan>`,
+      example: `${p}tageveryone Rapat dadakan!`,
+      notes: 'Hanya admin.'
     },
     welcome: {
       title: 'Welcome Message',
       aliases: [],
       what: 'Sambut member baru otomatis.',
-      how: `${p}welcome on (atau off)`,
+      how: `${p}welcome on|off`,
       example: `${p}welcome on`,
       notes: 'Pesan sapaan bisa dikustom (WIP).'
+    },
+    promote: {
+        title: 'Promote Member',
+        aliases: [],
+        what: 'Menjadikan anggota biasa sebagai admin.',
+        how: `${p}promote @user`,
+        example: `${p}promote @Zireael`,
+        notes: 'Hanya admin. Bot juga harus admin.'
+    },
+    demote: {
+        title: 'Demote Admin',
+        aliases: [],
+        what: 'Menurunkan admin menjadi anggota biasa.',
+        how: `${p}demote @user`,
+        example: `${p}demote @Zireael`,
+        notes: 'Hanya admin. Bot juga harus admin.'
+    },
+    kick: {
+        title: 'Kick Member',
+        aliases: [],
+        what: 'Mengeluarkan anggota dari grup.',
+        how: `${p}kick @user`,
+        example: `${p}kick @Zireael`,
+        notes: 'Hanya admin. Bot juga harus admin.'
+    },
+
+    // ==== ANIMANGA & WATCHLIST ====
+    manga: {
+        title: 'Manga Search',
+        aliases: [],
+        what: 'Mencari informasi detail tentang manga.',
+        how: `${p}manga <judul>`,
+        example: `${p}manga one piece`,
+        notes: 'Gunakan /m <nomor> untuk detail.'
+    },
+    anime: {
+        title: 'Anime Search',
+        aliases: [],
+        what: 'Mencari informasi & link download anime.',
+        how: `${p}anime <judul>`,
+        example: `${p}anime jujutsu kaisen`,
+        notes: 'Gunakan /a <nomor> untuk detail.'
+    },
+    film: {
+        title: 'Film Search',
+        aliases: [],
+        what: 'Mencari informasi & link download film.',
+        how: `${p}film <judul>`,
+        example: `${p}film godzilla`,
+        notes: 'Gunakan /f <nomor> untuk detail.'
+    },
+    series: {
+        title: 'Series Search',
+        aliases: [],
+        what: 'Mencari informasi & link download serial TV.',
+        how: `${p}series <judul>`,
+        example: `${p}series loki`,
+        notes: 'Gunakan /seri <nomor> untuk detail.'
+    },
+    drakor: {
+        title: 'Drakor Search',
+        aliases: [],
+        what: 'Mencari informasi & link download drama Korea.',
+        how: `${p}drakor <judul>`,
+        example: `${p}drakor queen of tears`,
+        notes: 'Fitur ini masih dalam pengembangan (WIP).'
+    },
+
+    // ==== STUDY ZONE ====
+    ocr: {
+        title: 'OCR (Image to Text)',
+        aliases: [],
+        what: 'Mengekstrak teks dari gambar.',
+        how: `${p}ocr (reply/upload foto)`,
+        example: `${p}ocr`,
+        notes: 'Akurasi tergantung kualitas gambar.'
+    },
+    translate: {
+        title: 'Translate',
+        aliases: ['tr'],
+        what: 'Menerjemahkan teks ke bahasa lain.',
+        how: `${p}translate <kode_bahasa> <teks>`,
+        example: `${p}translate id hello world`,
+        notes: 'Gunakan /bahasa untuk daftar kode.'
+    },
+    eperpus: {
+        title: 'E-Perpus Search',
+        aliases: [],
+        what: 'Mencari dan mengunduh buku dari perpustakaan digital.',
+        how: `${p}eperpus <judul buku>`,
+        example: `${p}eperpus laskar pelangi`,
+        notes: 'Ketersediaan buku tergantung sumber (WIP).'
+    },
+    pdf: {
+        title: 'PDF Converter',
+        aliases: [],
+        what: 'Mengubah file (misal: .docx) menjadi PDF.',
+        how: `${p}pdf (reply/upload file)`,
+        example: `${p}pdf`,
+        notes: 'Fitur masih dalam pengembangan (WIP).'
+    },
+
+    // ==== FUN ZONE ====
+    tekateki: {
+        title: 'Teka-Teki',
+        aliases: ['tebak'],
+        what: 'Memberikan teka-teki acak untuk dijawab.',
+        how: `${p}tekateki`,
+        example: `${p}tekateki`,
+        notes: 'Jawab di chat untuk melanjutkan.'
+    },
+    quiz: {
+        title: 'Quiz Family 100',
+        aliases: [],
+        what: 'Bermain kuis interaktif Family 100.',
+        how: `${p}quiz`,
+        example: `${p}quiz`,
+        notes: 'Fitur masih dalam pengembangan (WIP).'
+    },
+    fakta: {
+        title: 'Fakta Acak',
+        aliases: ['trivia'],
+        what: 'Menampilkan fakta menarik acak yang sudah diterjemahkan.',
+        how: `${p}fakta`,
+        example: `${p}fakta`,
+        notes: 'Fakta baru setiap saat dari internet.'
+    },
+    story: {
+        title: 'Story Interactive',
+        aliases: [],
+        what: 'Memulai petualangan cerita interaktif yang dibuat oleh AI.',
+        how: `${p}story`,
+        example: `${p}story`,
+        notes: 'Pilihanmu akan menentukan alur cerita.'
     },
 
     // ==== INFO ====
@@ -169,6 +311,14 @@ module.exports = async (sock, m, text, from, watermark) => {
       example: `${p}userinfo`,
       notes: 'Menampilkan nama, JID, status umum.'
     },
+    premium: {
+        title: 'Info Premium',
+        aliases: ['donasi'],
+        what: 'Menampilkan informasi tentang keuntungan dan cara donasi.',
+        how: `${p}premium`,
+        example: `${p}premium`,
+        notes: '-'
+    },
     server: {
       title: 'Server Info',
       aliases: [],
@@ -177,13 +327,21 @@ module.exports = async (sock, m, text, from, watermark) => {
       example: `${p}server`,
       notes: 'Timezone/ISP dicoba dideteksi otomatis.'
     },
-    stat: {
+    status: {
       title: 'Bot Status',
-      aliases: ['botstat'],
+      aliases: ['botstat', 'stat'],
       what: 'Statistik bot (users, groups, hitstat, runtime) + system flags.',
-      how: `${p}stat`,
-      example: `${p}stat`,
+      how: `${p}status`,
+      example: `${p}status`,
       notes: 'Sebagian nilai “Coming Soon” sampai fitur aktif.'
+    },
+    aduan: {
+        title: 'Form Aduan',
+        aliases: [],
+        what: 'Menampilkan link untuk mengirim keluhan atau saran.',
+        how: `${p}aduan`,
+        example: `${p}aduan`,
+        notes: 'Link diatur oleh owner.'
     },
     owner: {
       title: 'Kontak Owner',
@@ -193,6 +351,14 @@ module.exports = async (sock, m, text, from, watermark) => {
       example: `${p}owner`,
       notes: 'Jika vCard gagal, fallback kirim nomor teks.'
     },
+    help: {
+        title: 'Help',
+        aliases: [],
+        what: 'Menampilkan menu bantuan ini.',
+        how: `${p}help [kategori/command]`,
+        example: `${p}help downloader`,
+        notes: '-'
+    },
 
     // ==== OWNER ====
     setwm: {
@@ -200,7 +366,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       aliases: [],
       what: 'Set pack & author untuk metadata sticker.',
       how: `${p}setwm <Pack> | <Author>`,
-      example: `${p}setwm ©Organisasi Pencinta Masakan | Kawori-Bot by Zireael`,
+      example: `${p}setwm ©Kawori | by Zireael`,
       notes: 'Hanya owner.'
     },
     ban: {
@@ -224,7 +390,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       aliases: [],
       what: 'Kirim pesan massal ke semua user yang pernah chat.',
       how: `${p}bc <pesan>`,
-      example: `${p}bc Halo! Bot di-update. Coba /menu ya.`,
+      example: `${p}bc Halo! Bot di-update.`,
       notes: 'Hati-hati spam. Owner saja.'
     },
     bcgc: {
@@ -255,12 +421,13 @@ module.exports = async (sock, m, text, from, watermark) => {
 
   // ===== Kategori → daftar command =====
   const K = {
-    downloader: ['fb','tiktok','tikwm','tikmp3','ig','x','yt','pinterest','spotify'],
-    converter:  ['smeme','snobg','s','toimg','emojimix'],
-    grouptools: ['tageveryone','antilink','welcome'],
-    study:      ['ocr','translate','pdf'],  // jika belum ada: WIP
-    fun:        ['tebak','quiz'],           // jika belum ada: WIP
-    info:       ['userinfo','server','stat','owner','help'],
+    downloader: ['fb','tiktok','ig','x','yt','pinterest','spotify'],
+    converter:  ['smeme','snobg','s','toimg','brat','emojimix'],
+    grouptools: ['antidelete', 'antilink', 'antivritex', 'tageveryone','welcome', 'promote', 'demote', 'kick'],
+    animanga:   ['manga', 'anime', 'film', 'series', 'drakor'],
+    study:      ['ocr','translate','eperpus','pdf'],
+    fun:        ['tekateki','quiz', 'fakta', 'story'],
+    info:       ['userinfo','premium','server','status','aduan','owner','help'],
     owner:      ['setwm','ban','unban','bc','bcgc','restart','update']
   };
 
@@ -272,6 +439,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     `• ${p}help downloader`,
     `• ${p}help converter`,
     `• ${p}help grouptools`,
+    `• ${p}help animanga`,
     `• ${p}help study`,
     `• ${p}help fun`,
     `• ${p}help info`,
@@ -295,6 +463,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       if (a.map(s => s.toLowerCase()).includes(n)) return key;
     }
     if (n === 'sticker' || n === 'stiker' || n === 'stick') return 's';
+    if (n === 'stat' || n === 'botstat') return 'status';
     return null;
   };
 
@@ -305,8 +474,9 @@ module.exports = async (sock, m, text, from, watermark) => {
       downloader: '⬇️ Downloader',
       converter:  '🔄 Converter',
       grouptools: '🛠️ Group Tools',
+      animanga:   '🍿 Animanga & Watchlist',
       study:      '📚 Study Zone',
-      fun:        '🎲 Fun',
+      fun:        '🎲 Fun Zone',
       info:       'ℹ️ Info',
       owner:      '👑 Owner'
     };
