@@ -49,7 +49,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     const coords = new Coordinates(-6.2, 106.8167);
     const params = CalculationMethod.MuslimWorldLeague();
     const times = new PrayerTimes(coords, now, params);
-    const prayers = ['fajr','sunrise','dhuhr','asr','maghrib','isha'];
+    const prayers = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
     const next = prayers.find(p => times[p] > now) || 'fajr';
     const nt = times[next];
     const diff = Math.max(0, Math.floor((nt - now) / 60000));
@@ -209,29 +209,29 @@ module.exports = async (sock, m, text, from, watermark) => {
         `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
       ];
       break;
-      
-// =============== MENU ANIMANGA & WATCHLIST ===============
-case '/menu animanga':
-  lines = [
-    LINE_BOLD,
-    '🍿 ' + b('ANIMANGA & WATCHLIST'),
-    LINE_BOLD,
-    '📚 Manga\n/manga [judul]',
-    LINE_THIN,
-    '🎌 Anime\n/anime [judul]',
-    LINE_THIN,
-    '🎬 Film\n/film [judul]',
-    LINE_THIN,
-    '📺 Series\n/series [judul]',
-    LINE_THIN,
-    '🇰🇷 Drakor\n/drakor [judul]',
-    LINE_BOLD,
-    '⬅️ Kembali\n/menu',
-    LINE_BOLD,
-    `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-  ];
-  break;
-      
+
+      // =============== MENU ANIMANGA & WATCHLIST ===============
+    case '/menu animanga':
+      lines = [
+        LINE_BOLD,
+        '🍿 ' + b('ANIMANGA & WATCHLIST'),
+        LINE_BOLD,
+        '📚 Manga\n/manga [judul]',
+        LINE_THIN,
+        '🎌 Anime\n/anime [judul]',
+        LINE_THIN,
+        '🎬 Film\n/film [judul]',
+        LINE_THIN,
+        '📺 Series\n/series [judul]',
+        LINE_THIN,
+        '�🇷 Drakor\n/drakor [judul]',
+        LINE_BOLD,
+        '⬅️ Kembali\n/menu',
+        LINE_BOLD,
+        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+      ];
+      break;
+
       // =============== MENU STUDY ===============
     case '/menu study':
       lines = [
@@ -256,7 +256,7 @@ case '/menu animanga':
     case '/menu fun':
       lines = [
         LINE_BOLD,
-        '� ' + b('FUN ZONE'),
+        '🎲 ' + b('FUN ZONE'),
         LINE_BOLD,
         '🧩 Teka-Teki\n/tekateki',
         LINE_THIN,
@@ -311,4 +311,4 @@ case '/menu animanga':
 
   await sock.sendMessage(from, { text: lines.join('\n') });
 };
-�
+
