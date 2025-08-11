@@ -182,4 +182,3 @@ module.exports = async (sock, m, text, from) => {
         return sock.sendMessage(from, { text: message, mentions: [nextPlayerJid] }, { quoted: m });
     }
 };
-�
