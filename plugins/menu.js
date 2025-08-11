@@ -174,6 +174,10 @@ module.exports = async (sock, m, text, from, watermark) => {
         LINE_THIN,
         '👋 Sapaan grup\n/welcome on|off',
         LINE_THIN,
+        '⬆️ Promote member\n/promote @user',
+        LINE_THIN,
+        '⬇️ Demote admin\n/demote @user',
+        LINE_THIN,
         '👢 Kick member\n/kick @user',
         LINE_BOLD,
         '⬅️ Kembali\n/menu',
@@ -252,7 +256,7 @@ case '/menu animanga':
     case '/menu fun':
       lines = [
         LINE_BOLD,
-        '🎲 ' + b('FUN ZONE'),
+        '� ' + b('FUN ZONE'),
         LINE_BOLD,
         '🧩 Teka-Teki\n/tekateki',
         LINE_THIN,
@@ -307,3 +311,4 @@ case '/menu animanga':
 
   await sock.sendMessage(from, { text: lines.join('\n') });
 };
+�
