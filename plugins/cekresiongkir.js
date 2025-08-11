@@ -55,7 +55,7 @@ module.exports = async (sock, m, text, from) => {
 
     // --- Cek Resi (Menggunakan RapidAPI) ---
     if (lower.startsWith('/resi ')) {
-        if (!RAPIDAPI_KEY || RAPIDAPI_KEY === 'ebbf66c115msh5db839e4003caf9p1dfa5cjsnb50dfdd7ea6f') {
+        if (!RAPIDAPI_KEY || RAPIDAPI_KEY === 'GANTI_DENGAN_API_KEY_ANDA') {
             return sock.sendMessage(from, { text: "❌ API Key untuk fitur ini belum diatur oleh owner." }, { quoted: m });
         }
 
