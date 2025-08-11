@@ -40,25 +40,18 @@ module.exports = async (sock, m, text, from) => {
         // Ambil teks setelah perintah /everyone sebagai pesan.
         const messageText = raw.slice(9).trim();
         
-        // Buat teks mention, contoh: @62812... @62857...
-        let mentionText = `📢 ${b('Panggilan untuk semua!')}\n`;
+        // Buat teks pesan tanpa daftar mention yang terlihat.
+        let hidetagText = `📢 ${b('Panggilan untuk semua!')}`;
         if (messageText) {
-            mentionText += `\nPesan: ${messageText}\n\n`;
-        } else {
-            mentionText += `\n`;
+            hidetagText += `\n\nPesan: ${messageText}`;
         }
 
         const allParticipantJids = participants.map(p => p.id);
         
-        // Tambahkan tag mention ke dalam teks
-        for (let jid of allParticipantJids) {
-            mentionText += `@${jid.split('@')[0]}\n`;
-        }
-
-        // 4. Kirim pesan dengan properti 'mentions' yang berisi semua JID.
+        // 4. Kirim pesan dengan teks singkat, tapi mention semua anggota secara "tersembunyi".
         // Properti 'mentions' inilah yang membuat notifikasi tetap masuk.
         await sock.sendMessage(from, {
-            text: mentionText.trim(),
+            text: hidetagText,
             mentions: allParticipantJids
         }, { quoted: m });
 
