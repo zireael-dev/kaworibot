@@ -1,7 +1,9 @@
 /**
  * plugins/menu.js
- * Menu interaktif KaworiBot, versi mobile-friendly, vertikal, ornamen garis.
+ * Menu interaktif KaworiBot, dengan fitur cover.
  */
+const fs = require('fs');
+const path = require('path');
 const fetch = require('node-fetch');
 const { PrayerTimes, CalculationMethod, Coordinates } = require('adhan');
 
@@ -13,302 +15,346 @@ const LINE_THIN = '────────────────────'
 const b = (t) => `*${t}*`;
 
 module.exports = async (sock, m, text, from, watermark) => {
-  const cmd = (text || '').trim().toLowerCase();
-  if (!cmd.startsWith('/menu')) return;
+    const cmd = (text || '').trim().toLowerCase();
+    if (!cmd.startsWith('/menu')) return;
 
-  // Rolling sapaan
-  const rolls = [
-    'Semoga harimu penuh energi dan produktif! ⚡',
-    'Ada cerita seru hari ini? Yuk, sharing!',
-    'Jangan lupa minum air putih, ya! 💧',
-    'Kerja bagus! Jangan lupa rehat sebentar 😊',
-    'Langit cerah, semangat pun berkobar! ☀️',
-    'Apapun cuacanya, mood tetap ceria! 🎶'
-  ];
-  const randomRoll = rolls[Math.floor(Math.random() * rolls.length)];
+    // Rolling sapaan
+    const rolls = [
+        'Semoga harimu penuh energi dan produktif! ⚡',
+        'Ada cerita seru hari ini? Yuk, sharing!',
+        'Jangan lupa minum air putih, ya! 💧',
+        'Kerja bagus! Jangan lupa rehat sebentar 😊',
+        'Langit cerah, semangat pun berkobar! ☀️',
+        'Apapun cuacanya, mood tetap ceria! 🎶'
+    ];
+    const randomRoll = rolls[Math.floor(Math.random() * rolls.length)];
 
-  // Info waktu & greeting
-  const now = new Date();
-  const h = now.getHours();
-  const emoji = h >= 4 && h < 11 ? '🌅' : h < 15 ? '☀️' : h < 18 ? '🌇' : '🌙';
-  const greet = h >= 4 && h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
-  const userName = m.pushName || from.split('@')[0];
+    // Info waktu & greeting
+    const now = new Date();
+    const h = now.getHours();
+    const emoji = h >= 4 && h < 11 ? '🌅' : h < 15 ? '☀️' : h < 18 ? '🌇' : '🌙';
+    const greet = h >= 4 && h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
+    const userName = m.pushName || from.split('@')[0];
 
-  // Cuaca Jakarta
-  let weatherText = '☁️ Cuaca: tidak tersedia';
-  try {
-    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-6.2&longitude=106.8167&current_weather=true');
-    const data = await res.json();
-    const cw = data.current_weather;
-    weatherText = `☁️ ${cw.temperature}°C, angin ${cw.windspeed} km/h`;
-  } catch {}
+    // Cuaca Jakarta
+    let weatherText = '☁️ Cuaca: tidak tersedia';
+    try {
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-6.2&longitude=106.8167&current_weather=true');
+        const data = await res.json();
+        const cw = data.current_weather;
+        weatherText = `☁️ ${cw.temperature}°C, angin ${cw.windspeed} km/h`;
+    } catch {}
 
-  // Jadwal sholat
-  let prayerText = '🕌 Jadwal sholat tidak tersedia';
-  try {
-    const coords = new Coordinates(-6.2, 106.8167);
-    const params = CalculationMethod.MuslimWorldLeague();
-    const times = new PrayerTimes(coords, now, params);
-    const prayers = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
-    const next = prayers.find(p => times[p] > now) || 'fajr';
-    const nt = times[next];
-    const diff = Math.max(0, Math.floor((nt - now) / 60000));
-    prayerText = `🕌 ${next} dalam ${Math.floor(diff/60)}j ${diff%60}m (pukul ${nt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})})`;
-  } catch {}
+    // Jadwal sholat
+    let prayerText = '🕌 Jadwal sholat tidak tersedia';
+    try {
+        const coords = new Coordinates(-6.2, 106.8167);
+        const params = CalculationMethod.MuslimWorldLeague();
+        const times = new PrayerTimes(coords, now, params);
+        const prayers = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
+        const next = prayers.find(p => times[p] > now) || 'fajr';
+        const nt = times[next];
+        const diff = Math.max(0, Math.floor((nt - now) / 60000));
+        prayerText = `🕌 ${next} dalam ${Math.floor(diff/60)}j ${diff%60}m (pukul ${nt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})})`;
+    } catch {}
 
-  let lines = [];
-  switch (cmd) {
-    // ================= MENU UTAMA =================
-    case '/menu':
-      lines = [
-        LINE_BOLD,
-        `${emoji} ${b(greet)}, ${b(userName)}!`,
-        randomRoll,
-        weatherText,
-        prayerText,
-        LINE_BOLD,
-        '',
-        '📂 ' + b('MENU UTAMA'),
-        LINE_BOLD,
-        '⬇️ Downloader\n/menu downloader',
-        LINE_THIN,
-        '🛠️ Group Tools\n/menu grouptools',
-        LINE_THIN,
-        '🔄 Converter\n/menu converter',
-        LINE_THIN,
-        '🍿 Animanga & Watchlist\n/menu animanga',
-        LINE_THIN,
-        '📚 Study Zone\n/menu study',
-        LINE_THIN,
-        '🎲 Fun Zone\n/menu fun',
-        LINE_THIN,
-        'ℹ️ Info\n/menu info',
-        LINE_THIN,
-        '👑 Owner\n/menu owner',
-        LINE_BOLD,
-        '💡 Bingung command? ketik /help',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+    let lines = [];
+    switch (cmd) {
+        // ================= MENU UTAMA =================
+        case '/menu':
+            lines = [
+                LINE_BOLD,
+                `${emoji} ${b(greet)}, ${b(userName)}!`,
+                randomRoll,
+                weatherText,
+                prayerText,
+                LINE_BOLD,
+                '',
+                '📂 ' + b('MENU UTAMA'),
+                LINE_BOLD,
+                '⬇️ Downloader\n/menu downloader',
+                LINE_THIN,
+                '🛠️ Group Tools\n/menu grouptools',
+                LINE_THIN,
+                '🔧 Utility Tools\n/menu utility',
+                LINE_THIN,
+                '🔄 Converter\n/menu converter',
+                LINE_THIN,
+                '🍿 Animanga & Watchlist\n/menu animanga',
+                LINE_THIN,
+                '📚 Study Zone\n/menu study',
+                LINE_THIN,
+                '🎲 Fun Zone\n/menu fun',
+                LINE_THIN,
+                'ℹ️ Info\n/menu info',
+                LINE_THIN,
+                '👑 Owner\n/menu owner',
+                LINE_BOLD,
+                '💡 Bingung command? ketik /help',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU OWNER ===============
-    case '/menu owner':
-      lines = [
-        LINE_BOLD,
-        '👑 ' + b('OWNER TOOLS'),
-        LINE_BOLD,
-        '🌟 Set watermark sticker\n/setwm <text>',
-        LINE_THIN,
-        '🚫 Ban user\n/ban @user',
-        LINE_THIN,
-        '✅ Unban user\n/unban @user',
-        LINE_THIN,
-        '🔒 Block user\n/block @user',
-        LINE_THIN,
-        '🔓 Unblock user\n/unblock @user',
-        LINE_THIN,
-        '👑 Add premium\n/addprem @user',
-        LINE_THIN,
-        '🧑‍🤝‍🧑 Add Co-Owner\n/addcoowner @user',
-        LINE_THIN,
-        '📣 Broadcast users\n/bc <text>',
-        LINE_THIN,
-        '📢 Broadcast groups\n/bcgc <text>',
-        LINE_THIN,
-        '🔤 Set prefix\n/prefix <char>',
-        LINE_THIN,
-        '🔗 Set link aduan\n/setlink <url>',
-        LINE_THIN,
-        '🖼️ Set cover menu\n/setcover <url>',
-        LINE_THIN,
-        '🚀 Update Bot\n/update',
-        LINE_THIN,
-        '🔄 Restart Bot\n/restart',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU OWNER ===============
+        case '/menu owner':
+            lines = [
+                LINE_BOLD,
+                '👑 ' + b('OWNER TOOLS'),
+                LINE_BOLD,
+                '🌟 Set watermark sticker\n/setwm <text>',
+                LINE_THIN,
+                '🚫 Ban user\n/ban @user',
+                LINE_THIN,
+                '✅ Unban user\n/unban @user',
+                LINE_THIN,
+                '🔒 Block user\n/block @user',
+                LINE_THIN,
+                '🔓 Unblock user\n/unblock @user',
+                LINE_THIN,
+                '👑 Add premium\n/addprem @user',
+                LINE_THIN,
+                '🧑‍🤝‍🧑 Add Co-Owner\n/addcoowner @user',
+                LINE_THIN,
+                '📣 Broadcast users\n/bc <text>',
+                LINE_THIN,
+                '📢 Broadcast groups\n/bcgc <text>',
+                LINE_THIN,
+                '🔤 Set prefix\n/prefix <char>',
+                LINE_THIN,
+                '🔗 Set link aduan\n/setlink <url>',
+                LINE_THIN,
+                '🖼️ Set cover menu\n/setcover (reply foto)',
+                LINE_THIN,
+                '🚀 Update Bot\n/update',
+                LINE_THIN,
+                '🔄 Restart Bot\n/restart',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU DOWNLOADER ===============
-    case '/menu downloader':
-      lines = [
-        LINE_BOLD,
-        '⬇️ ' + b('DOWNLOADER'),
-        LINE_BOLD,
-        '📺 Facebook\n/fb [url]',
-        LINE_THIN,
-        '🎵 TikTok\n/tiktok [url]',
-        LINE_THIN,
-        '📸 Instagram\n/ig [url]',
-        LINE_THIN,
-        '🐦 X/Twitter\n/x [url]',
-        LINE_THIN,
-        '📌 Pinterest\n/pinterest [url]',
-        LINE_THIN,
-        '▶️ YouTube\n/yt [url]',
-        LINE_THIN,
-        '🎧 Spotify\n/spotify [url]',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU DOWNLOADER ===============
+        case '/menu downloader':
+            lines = [
+                LINE_BOLD,
+                '⬇️ ' + b('DOWNLOADER'),
+                LINE_BOLD,
+                '📺 Facebook\n/fb [url]',
+                LINE_THIN,
+                '🎵 TikTok\n/tiktok [url]',
+                LINE_THIN,
+                '📸 Instagram\n/ig [url]',
+                LINE_THIN,
+                '� X/Twitter\n/x [url]',
+                LINE_THIN,
+                '📌 Pinterest\n/pinterest [url]',
+                LINE_THIN,
+                '▶️ YouTube\n/yt [url]',
+                LINE_THIN,
+                '🎧 Spotify\n/spotify [url]',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU GROUPTOOLS ===============
-    case '/menu grouptools':
-      lines = [
-        LINE_BOLD,
-        '🛠️ ' + b('GROUP TOOLS'),
-        LINE_BOLD,
-        '🗑️ Anti delete\n/antidelete on|off',
-        LINE_THIN,
-        '🔗 Anti link\n/antilink on|off',
-        LINE_THIN,
-        '💥 Anti virtex\n/antivritex on|off',
-        LINE_THIN,
-        '📢 Tag everyone\n/tageveryone on|off',
-        LINE_THIN,
-        '👋 Sapaan grup\n/welcome on|off',
-        LINE_THIN,
-        '⬆️ Promote member\n/promote @user',
-        LINE_THIN,
-        '⬇️ Demote admin\n/demote @user',
-        LINE_THIN,
-        '👢 Kick member\n/kick @user',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU GROUPTOOLS ===============
+        case '/menu grouptools':
+            lines = [
+                LINE_BOLD,
+                '🛠️ ' + b('GROUP TOOLS'),
+                LINE_BOLD,
+                '🗑️ Anti delete\n/antidelete on|off',
+                LINE_THIN,
+                '🔗 Anti link\n/antilink on|off',
+                LINE_THIN,
+                '💥 Anti virtex\n/antivritex on|off',
+                LINE_THIN,
+                '📢 Tag everyone\n/everyone [pesan]',
+                LINE_THIN,
+                '👋 Sapaan grup\n/welcome on|off',
+                LINE_THIN,
+                '⬆️ Promote member\n/promote @user',
+                LINE_THIN,
+                '⬇️ Demote admin\n/demote @user',
+                LINE_THIN,
+                '👢 Kick member\n/kick @user',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU CONVERTER ===============
-    case '/menu converter':
-      lines = [
-        LINE_BOLD,
-        '🔄 ' + b('CONVERTER'),
-        LINE_BOLD,
-        '🤣 Sticker meme\n/smeme (reply/upload)',
-        LINE_THIN,
-        '✂️ Remove background\n/snobg',
-        LINE_THIN,
-        '🌟 Buat stiker\n/sticker',
-        LINE_THIN,
-        '🖼️ Stiker ke gambar\n/toimg',
-        LINE_THIN,
-        '🟩 Brat generator\n/brat',
-        LINE_THIN,
-        '🤝 Gabung emoji\n/emojimix e1+e2',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU UTILITY ===============
+        case '/menu utility':
+            lines = [
+                LINE_BOLD,
+                '🔧 ' + b('UTILITY TOOLS'),
+                LINE_BOLD,
+                '🚚 Cek Resi\n/resi <kurir>|<no_resi>',
+                LINE_THIN,
+                '✈️ Cek Ongkir\n/ongkir <asal>|<tujuan>|<berat_gram>',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU ANIMANGA & WATCHLIST ===============
-    case '/menu animanga':
-      lines = [
-        LINE_BOLD,
-        '🍿 ' + b('ANIMANGA & WATCHLIST'),
-        LINE_BOLD,
-        '📚 Manga\n/manga [judul]',
-        LINE_THIN,
-        '🎌 Anime\n/anime [judul]',
-        LINE_THIN,
-        '🎬 Film\n/film [judul]',
-        LINE_THIN,
-        '📺 Series\n/series [judul]',
-        LINE_THIN,
-        '�🇷 Drakor\n/drakor [judul]',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU CONVERTER ===============
+        case '/menu converter':
+            lines = [
+                LINE_BOLD,
+                '🔄 ' + b('CONVERTER'),
+                LINE_BOLD,
+                '🤣 Sticker meme\n/smeme (reply/upload)',
+                LINE_THIN,
+                '✂️ Remove background\n/snobg',
+                LINE_THIN,
+                '🌟 Buat stiker\n/sticker',
+                LINE_THIN,
+                '🖼️ Stiker ke gambar\n/toimg',
+                LINE_THIN,
+                '📄 Konversi ke PDF\n/topdf (reply/upload)',
+                LINE_THIN,
+                '🟩 Brat generator\n/brat',
+                LINE_THIN,
+                '🤝 Gabung emoji\n/emojimix e1+e2',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU STUDY ===============
-    case '/menu study':
-      lines = [
-        LINE_BOLD,
-        '📚 ' + b('STUDY ZONE'),
-        LINE_BOLD,
-        '📷 OCR text\n/ocr',
-        LINE_THIN,
-        '🌐 Terjemahan teks\n/translate [teks]',
-        LINE_THIN,
-        '📚 Cari buku\n/eperpus [query]',
-        LINE_THIN,
-        '📄 PDF converter\n/pdf [file]',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU ANIMANGA & WATCHLIST ===============
+        case '/menu animanga':
+            lines = [
+                LINE_BOLD,
+                '🍿 ' + b('ANIMANGA & WATCHLIST'),
+                LINE_BOLD,
+                '📚 Manga\n/manga [judul]',
+                LINE_THIN,
+                '🎌 Anime\n/anime [judul]',
+                LINE_THIN,
+                '🎬 Film\n/film [judul]',
+                LINE_THIN,
+                '📺 Series\n/series [judul]',
+                LINE_THIN,
+                '🇰🇷 Drakor\n/drakor [judul]',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU FUN ===============
-    case '/menu fun':
-      lines = [
-        LINE_BOLD,
-        '🎲 ' + b('FUN ZONE'),
-        LINE_BOLD,
-        '🧩 Teka-Teki\n/tekateki',
-        LINE_THIN,
-        '❓ Quiz Family 100\n/quiz',
-        LINE_THIN,
-        '💡 Trivia acak\n/fakta',
-        LINE_THIN,
-        '📖 Story Interactive\n/story',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU STUDY ===============
+        case '/menu study':
+            lines = [
+                LINE_BOLD,
+                '📚 ' + b('STUDY ZONE'),
+                LINE_BOLD,
+                '📷 OCR text\n/ocr',
+                LINE_THIN,
+                '🌐 Terjemahan teks\n/translate [teks]',
+                LINE_THIN,
+                '📚 Cari buku\n/eperpus [query]',
+                LINE_THIN,
+                '📄 PDF converter\n/topdf [file]',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU INFO ===============
-    case '/menu info':
-      lines = [
-        LINE_BOLD,
-        'ℹ️ ' + b('INFO'),
-        LINE_BOLD,
-        '🙋 Profil kamu\n/userinfo',
-        LINE_THIN,
-        '💎 Premium & donasi\n/premium',
-        LINE_THIN,
-        '🖥️ Status server\n/server',
-        LINE_THIN,
-        '🤖 Status bot\n/status',
-        LINE_THIN,
-        '📬 Form aduan\n/aduan',
-        LINE_THIN,
-        '👑 Kontak owner\n/owner',
-        LINE_THIN,
-        '🆘 Bantuan lengkap\n/help',
-        LINE_BOLD,
-        '⬅️ Kembali\n/menu',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-      break;
+            // =============== MENU FUN ===============
+        case '/menu fun':
+            lines = [
+                LINE_BOLD,
+                '🎲 ' + b('FUN ZONE'),
+                LINE_BOLD,
+                '🧩 Teka-Teki\n/tekateki',
+                LINE_THIN,
+                '❓ Quiz Family 100\n/quiz',
+                LINE_THIN,
+                '💡 Trivia acak\n/fakta',
+                LINE_THIN,
+                '📖 Story Interactive\n/story',
+                LINE_THIN,
+                '🎮 TicTacToe\n/ttt',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-      // =============== MENU DEFAULT (ERROR) ===============
-    default:
-      lines = [
-        LINE_BOLD,
-        b('Perintah tidak dikenali!'),
-        'Ketik /menu untuk membuka menu utama.',
-        LINE_BOLD,
-        `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
-      ];
-  }
+            // =============== MENU INFO ===============
+        case '/menu info':
+            lines = [
+                LINE_BOLD,
+                'ℹ️ ' + b('INFO'),
+                LINE_BOLD,
+                '🙋 Profil kamu\n/userinfo',
+                LINE_THIN,
+                '💎 Premium & donasi\n/premium',
+                LINE_THIN,
+                '🖥️ Status server\n/server',
+                LINE_THIN,
+                '🤖 Status bot\n/status',
+                LINE_THIN,
+                '📬 Form aduan\n/aduan',
+                LINE_THIN,
+                '👑 Kontak owner\n/owner',
+                LINE_THIN,
+                '🆘 Bantuan lengkap\n/help',
+                LINE_BOLD,
+                '⬅️ Kembali\n/menu',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+            break;
 
-  await sock.sendMessage(from, { text: lines.join('\n') });
+            // =============== MENU DEFAULT (ERROR) ===============
+        default:
+            lines = [
+                LINE_BOLD,
+                b('Perintah tidak dikenali!'),
+                'Ketik /menu untuk membuka menu utama.',
+                LINE_BOLD,
+                `≪${watermark.replace(/\s+/g, ' ').trim()}≫`
+            ];
+    }
+
+    // Tentukan path ke file cover lokal
+    const coverPath = path.join(__dirname, '..', 'media', 'cover.jpg');
+
+    // Cek apakah file cover ada
+    if (fs.existsSync(coverPath)) {
+        // Jika ada, baca file dan kirim dengan gambar
+        const coverBuffer = fs.readFileSync(coverPath);
+        await sock.sendMessage(from, {
+            text: lines.join('\n'),
+            contextInfo: {
+                externalAdReply: {
+                    title: "KaworiBot",
+                    body: watermark,
+                    thumbnail: coverBuffer, // Gunakan buffer dari file lokal
+                    mediaType: 1,
+                    renderLargerThumbnail: true
+                }
+            }
+        }, { quoted: m });
+    } else {
+        // Jika tidak ada, kirim teks biasa
+        await sock.sendMessage(from, { text: lines.join('\n') }, { quoted: m });
+    }
 };
-
+�
