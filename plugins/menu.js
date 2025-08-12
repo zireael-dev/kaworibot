@@ -344,7 +344,7 @@ module.exports = async (sock, m, text, from, watermark) => {
             text: lines.join('\n'),
             contextInfo: {
                 externalAdReply: {
-                    title: "KaworiBot",
+                    title: "©𝐊𝐚𝐰𝐨𝐫𝐢-𝐁𝐨𝐭 𝐯𝟎.𝟏",
                     body: watermark,
                     thumbnail: coverBuffer, // Gunakan buffer dari file lokal
                     mediaType: 1,
