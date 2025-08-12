@@ -80,7 +80,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     smeme: {
       title: 'Sticker Meme',
       aliases: [],
-      what: 'Bikin stiker meme dari foto (teks atas|bawah, otomatis UPPERCASE).',
+      what: 'Bikin stiker meme dari foto (teks atas|bawah).',
       how: `${p}smeme <atas>|<bawah> (reply/upload foto)`,
       example: `${p}smeme AKU LAPAR|TAPI MALAS MASAK`,
       notes: 'Font Arial putih + outline hitam.'
@@ -88,16 +88,16 @@ module.exports = async (sock, m, text, from, watermark) => {
     snobg: {
       title: 'Sticker No-Background',
       aliases: ['nobg'],
-      what: 'Hapus background foto, kirim sebagai stiker transparan.',
-      how: `${p}snobg (reply foto / caption ${p}snobg)`,
+      what: 'Hapus background foto, kirim sebagai stiker.',
+      how: `${p}snobg (reply/upload foto)`,
       example: `${p}snobg`,
       notes: 'Pastikan reply ke foto, bukan file dokumen.'
     },
     s: {
       title: 'Buat Sticker',
       aliases: ['stick', 'stiker', 'sticker'],
-      what: 'Jadiin foto/video ke stiker. Bisa reply atau caption.',
-      how: `${p}s  (reply/upload foto/video)`,
+      what: 'Jadiin foto/video ke stiker.',
+      how: `${p}s (reply/upload foto/video)`,
       example: `${p}s`,
       notes: 'Video = CROPPED; Foto = FULL. Metadata pakai /setwm.'
     },
@@ -151,12 +151,12 @@ module.exports = async (sock, m, text, from, watermark) => {
         example: `${p}antivritex on`,
         notes: 'Hanya admin.'
     },
-    tageveryone: {
-      title: 'Tag Everyone',
+    everyone: {
+      title: 'Tag Everyone (Hidetag)',
       aliases: ['hidetag'],
-      what: 'Tag semua member grup.',
-      how: `${p}tageveryone <pesan>`,
-      example: `${p}tageveryone Rapat dadakan!`,
+      what: 'Tag semua member grup tanpa menampilkan daftar nama.',
+      how: `${p}everyone <pesan>`,
+      example: `${p}everyone Rapat dadakan!`,
       notes: 'Hanya admin.'
     },
     welcome: {
@@ -190,6 +190,24 @@ module.exports = async (sock, m, text, from, watermark) => {
         how: `${p}kick @user`,
         example: `${p}kick @Zireael`,
         notes: 'Hanya admin. Bot juga harus admin.'
+    },
+
+    // ==== UTILITY TOOLS ====
+    resi: {
+        title: 'Cek Resi',
+        aliases: [],
+        what: 'Melacak status paket dari berbagai kurir.',
+        how: `${p}resi <kurir>|<no_resi>`,
+        example: `${p}resi jne|123456789`,
+        notes: 'Kurir: jne, jnt, sicepat, dll.'
+    },
+    ongkir: {
+        title: 'Cek Ongkir',
+        aliases: [],
+        what: 'Memeriksa biaya ongkos kirim.',
+        how: `${p}ongkir <asal>|<tujuan>|<berat_gram>`,
+        example: `${p}ongkir jakarta|bandung|1000`,
+        notes: 'Bot akan menampilkan tarif dari berbagai kurir.'
     },
 
     // ==== ANIMANGA & WATCHLIST ====
@@ -259,13 +277,13 @@ module.exports = async (sock, m, text, from, watermark) => {
         example: `${p}eperpus laskar pelangi`,
         notes: 'Ketersediaan buku tergantung sumber (WIP).'
     },
-    pdf: {
+    topdf: {
         title: 'PDF Converter',
         aliases: [],
-        what: 'Mengubah file (misal: .docx) menjadi PDF.',
-        how: `${p}pdf (reply/upload file)`,
-        example: `${p}pdf`,
-        notes: 'Fitur masih dalam pengembangan (WIP).'
+        what: 'Mengubah gambar atau dokumen menjadi file PDF.',
+        how: `${p}topdf (reply/upload file)`,
+        example: `${p}topdf`,
+        notes: 'Mendukung gambar dan beberapa format dokumen.'
     },
 
     // ==== FUN ZONE ====
@@ -301,12 +319,20 @@ module.exports = async (sock, m, text, from, watermark) => {
         example: `${p}story`,
         notes: 'Pilihanmu akan menentukan alur cerita.'
     },
+    ttt: {
+        title: 'Tic-Tac-Toe',
+        aliases: [],
+        what: 'Bermain game Tic-Tac-Toe di grup.',
+        how: `${p}ttt`,
+        example: `${p}ttt`,
+        notes: 'Pemain kedua bergabung dengan /join.'
+    },
 
     // ==== INFO ====
     userinfo: {
       title: 'User Info',
       aliases: ['me'],
-      what: 'Profil singkat kamu (limit/premium: Coming Soon).',
+      what: 'Profil singkat kamu.',
       how: `${p}userinfo`,
       example: `${p}userinfo`,
       notes: 'Menampilkan nama, JID, status umum.'
@@ -322,7 +348,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     server: {
       title: 'Server Info',
       aliases: [],
-      what: 'Ringkasan OS, CPU, RAM, uptime, lokasi (tanpa IP publik).',
+      what: 'Ringkasan OS, CPU, RAM, uptime, lokasi.',
       how: `${p}server`,
       example: `${p}server`,
       notes: 'Timezone/ISP dicoba dideteksi otomatis.'
@@ -330,10 +356,10 @@ module.exports = async (sock, m, text, from, watermark) => {
     status: {
       title: 'Bot Status',
       aliases: ['botstat', 'stat'],
-      what: 'Statistik bot (users, groups, hitstat, runtime) + system flags.',
+      what: 'Statistik bot (users, groups, runtime).',
       how: `${p}status`,
       example: `${p}status`,
-      notes: 'Sebagian nilai “Coming Soon” sampai fitur aktif.'
+      notes: '-'
     },
     aduan: {
         title: 'Form Aduan',
@@ -375,7 +401,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Blokir akses user ke semua command.',
       how: `${p}ban @user`,
       example: `${p}ban @62812xxxx`,
-      notes: 'Owner/Co-owner.'
+      notes: 'Hanya owner.'
     },
     unban: {
       title: 'Unban User',
@@ -383,7 +409,39 @@ module.exports = async (sock, m, text, from, watermark) => {
       what: 'Buka ban user.',
       how: `${p}unban @user`,
       example: `${p}unban @62812xxxx`,
-      notes: 'Owner/Co-owner.'
+      notes: 'Hanya owner.'
+    },
+    block: {
+        title: 'Block User',
+        aliases: [],
+        what: 'Memblokir pengguna dari bot (PM).',
+        how: `${p}block @user`,
+        example: `${p}block @62812xxxx`,
+        notes: 'Hanya owner.'
+    },
+    unblock: {
+        title: 'Unblock User',
+        aliases: [],
+        what: 'Membuka blokir pengguna.',
+        how: `${p}unblock @user`,
+        example: `${p}unblock @62812xxxx`,
+        notes: 'Hanya owner.'
+    },
+    addprem: {
+        title: 'Add Premium',
+        aliases: [],
+        what: 'Memberikan status premium kepada pengguna.',
+        how: `${p}addprem @user`,
+        example: `${p}addprem @Zireael`,
+        notes: 'Hanya owner.'
+    },
+    addcoowner: {
+        title: 'Add Co-Owner',
+        aliases: [],
+        what: 'Menambahkan co-owner baru.',
+        how: `${p}addcoowner @user`,
+        example: `${p}addcoowner @Zireael`,
+        notes: 'Hanya owner.'
     },
     bc: {
       title: 'Broadcast ke Pengguna',
@@ -400,6 +458,30 @@ module.exports = async (sock, m, text, from, watermark) => {
       how: `${p}bcgc <pesan>`,
       example: `${p}bcgc Info: maintenance jam 02.00 WIB.`,
       notes: 'Owner saja.'
+    },
+    prefix: {
+        title: 'Set Prefix',
+        aliases: [],
+        what: 'Mengatur prefix bot.',
+        how: `${p}prefix <char>`,
+        example: `${p}prefix !`,
+        notes: 'Hanya owner.'
+    },
+    setlink: {
+        title: 'Set Link Aduan',
+        aliases: [],
+        what: 'Mengatur link untuk form aduan.',
+        how: `${p}setlink <url>`,
+        example: `${p}setlink https://wa.me/628...`,
+        notes: 'Hanya owner.'
+    },
+    setcover: {
+        title: 'Set Cover Menu',
+        aliases: [],
+        what: 'Mengatur gambar cover untuk menu.',
+        how: `${p}setcover (reply foto)`,
+        example: `${p}setcover`,
+        notes: 'Hanya owner.'
     },
     restart: {
       title: 'Restart Bot',
@@ -423,12 +505,13 @@ module.exports = async (sock, m, text, from, watermark) => {
   const K = {
     downloader: ['fb','tiktok','ig','x','yt','pinterest','spotify'],
     converter:  ['smeme','snobg','s','toimg','brat','emojimix'],
-    grouptools: ['antidelete', 'antilink', 'antivritex', 'tageveryone','welcome', 'promote', 'demote', 'kick'],
+    grouptools: ['antidelete', 'antilink', 'antivritex', 'everyone','welcome', 'promote', 'demote', 'kick'],
+    utility:    ['resi', 'ongkir'],
     animanga:   ['manga', 'anime', 'film', 'series', 'drakor'],
-    study:      ['ocr','translate','eperpus','pdf'],
-    fun:        ['tekateki','quiz', 'fakta', 'story'],
+    study:      ['ocr','translate','eperpus', 'topdf'],
+    fun:        ['tekateki','quiz', 'fakta', 'story', 'ttt'],
     info:       ['userinfo','premium','server','status','aduan','owner','help'],
-    owner:      ['setwm','ban','unban','bc','bcgc','restart','update']
+    owner:      ['setwm','ban','unban', 'block', 'unblock', 'addprem', 'addcoowner', 'bc','bcgc', 'prefix', 'setlink', 'setcover', 'restart','update']
   };
 
   // ===== Helpers =====
@@ -439,6 +522,7 @@ module.exports = async (sock, m, text, from, watermark) => {
     `• ${p}help downloader`,
     `• ${p}help converter`,
     `• ${p}help grouptools`,
+    `• ${p}help utility`,
     `• ${p}help animanga`,
     `• ${p}help study`,
     `• ${p}help fun`,
@@ -474,6 +558,7 @@ module.exports = async (sock, m, text, from, watermark) => {
       downloader: '⬇️ Downloader',
       converter:  '🔄 Converter',
       grouptools: '🛠️ Group Tools',
+      utility:    '🔧 Utility Tools',
       animanga:   '🍿 Animanga & Watchlist',
       study:      '📚 Study Zone',
       fun:        '🎲 Fun Zone',
