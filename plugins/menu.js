@@ -357,4 +357,4 @@ module.exports = async (sock, m, text, from, watermark) => {
         await sock.sendMessage(from, { text: lines.join('\n') }, { quoted: m });
     }
 };
-�
+
