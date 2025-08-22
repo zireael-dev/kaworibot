@@ -40,7 +40,7 @@ module.exports = async (sock, m, text, from) => {
         if (premiumData && premiumData.expiry > now) {
             const expiryDate = new Date(premiumData.expiry).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
             const remainingDays = Math.ceil((premiumData.expiry - now) / (1000 * 60 * 60 * 24));
-
+            
             const statusMessage = [
                 `👑 ${b('Status Premium Kamu')} 👑`,
                 LINE,
@@ -81,7 +81,7 @@ module.exports = async (sock, m, text, from) => {
         // Kirim gambar QRIS beserta pesan donasi
         return sock.sendMessage(from, {
             image: fs.readFileSync(qrisPath),
-                                caption: donationMessage
+            caption: donationMessage
         }, { quoted: m });
     }
 
@@ -95,16 +95,23 @@ module.exports = async (sock, m, text, from) => {
         try {
             const configPath = path.join(__dirname, '..', 'config.json');
             const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            ownerJid = config.owner[0]; // Ambil owner pertama dari daftar
+            let ownerNumber = config.owner[0]; // Ambil owner pertama dari daftar
+            
+            // FIX: Memastikan nomor owner dalam format JID yang benar
+            if (ownerNumber && !ownerNumber.endsWith('@s.whatsapp.net')) {
+                ownerNumber = ownerNumber.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            }
+            ownerJid = ownerNumber;
+
         } catch (e) {
             console.error("Gagal membaca config.json atau owner tidak ditemukan:", e);
             return sock.sendMessage(from, { text: "❌ Gagal meneruskan bukti, owner tidak dikonfigurasi." }, { quoted: m });
         }
 
         if (!ownerJid) {
-            return sock.sendMessage(from, { text: "❌ Gagal meneruskan bukti, owner tidak dikonfigurasi." }, { quoted: m });
+             return sock.sendMessage(from, { text: "❌ Gagal meneruskan bukti, owner tidak dikonfigurasi." }, { quoted: m });
         }
-
+        
         // Siapkan pesan untuk di-forward ke owner
         const userNumber = senderJid.split('@')[0];
         const forwardCaption = `🔔 *Konfirmasi Premium Baru* 🔔\n\nDari: ${userName}\nNomor: ${userNumber}\n\nMohon segera diverifikasi dan diaktifkan dengan perintah:\n/addprem ${userNumber} 30d`;
