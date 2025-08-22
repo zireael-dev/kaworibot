@@ -1,6 +1,6 @@
 /**
  * plugins/fun.story.js
- * Sebuah permainan cerita interaktif dinamis yang dibuat oleh AI (Gemini).
+ * Sebuah permainan cerita interaktif dinamis yang dibuat oleh Mistral AI.
  *
  * Commands:
  * /story          -> Memulai sesi cerita dan meminta nama karakter.
@@ -13,8 +13,8 @@
 const axios = require('axios');
 
 // --- KONFIGURASI ---
-// Dapatkan API Key gratis Anda dari Google AI Studio: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = 'AIzaSyB4r-S4m0F60245QEuJUpS7_EKmzjcr8LU'; // <-- WAJIB DIISI!
+// Dapatkan API Key Anda dari platform Mistral AI
+const MISTRAL_API_KEY = 'ueGPejjmfh84yoM41j2QebLKfjlvwuDy'; // <-- WAJIB DIISI!
 // --- ---
 
 const b = (t) => `*${t}*`;
@@ -27,29 +27,32 @@ function ensureDB() {
 }
 
 /**
- * Menghasilkan bagian cerita selanjutnya menggunakan Gemini AI.
+ * Menghasilkan bagian cerita selanjutnya menggunakan Mistral AI.
  * @param {Array} history Riwayat percakapan/cerita sejauh ini.
  * @returns {object|null} Objek berisi { text, choiceA, choiceB, isEnd } atau null jika gagal.
  */
 async function generateStoryNode(history) {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'GANTI_DENGAN_API_KEY_ANDA') {
-        console.error("Gemini API Key belum diisi di dalam script.");
+    if (!MISTRAL_API_KEY || MISTRAL_API_KEY === 'GANTI_DENGAN_API_KEY_ANDA') {
+        console.error("Mistral API Key belum diisi di dalam script.");
         return null;
     }
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = 'https://api.mistral.ai/v1/chat/completions';
 
     try {
         const response = await axios.post(apiUrl, {
-            contents: history
+            model: 'mistral-medium-2505',
+            messages: history
         }, {
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${MISTRAL_API_KEY}`
+            }
         });
         
-        const result = response.data;
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        const text = response.data.choices?.[0]?.message?.content;
 
         if (!text) {
-            console.error("Invalid API response structure:", result);
+            console.error("Invalid API response structure:", response.data);
             return null;
         }
 
@@ -72,7 +75,7 @@ async function generateStoryNode(history) {
         return { text: storyText, choiceA, choiceB, isEnd: false };
 
     } catch (error) {
-        console.error("Error calling Gemini API:", error.response ? error.response.data : error.message);
+        console.error("Error calling Mistral API:", error.response ? error.response.data : error.message);
         return null;
     }
 }
@@ -105,7 +108,7 @@ async function startStory(sock, m, from, characterName) {
         initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat dengan karakter yang namanya dibuat oleh AI. PENTING: Saat menarasikan cerita, gunakan gaya bahasa informal dan kata ganti orang kedua seperti 'kamu', '-mu', atau 'dirimu' (contoh: 'angin menerpa wajahmu', 'kamu menemukan sebuah pedang'). Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
     }
     
-    const history = [{ role: "user", parts: [{ text: initialPrompt }] }];
+    const history = [{ role: "user", content: initialPrompt }];
     const storyNode = await generateStoryNode(history);
 
     if (storyNode) {
@@ -181,8 +184,8 @@ module.exports = async (sock, m, text, from) => {
              nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi menggunakan gaya bahasa informal dan kata ganti orang kedua ('kamu', '-mu', 'dirimu'), dan dialog NPC menggunakan nama karakter yang sudah dibuat AI. Jika ini adalah akhir yang bagus atau buruk, akhiri narasinya dengan kata 'END.' di baris terpisah. Jika tidak, berikan narasi kelanjutan dan dua pilihan baru (A dan B). Ingat formatnya.`;
         }
         
-        session.history.push({ role: "model", parts: [{ text: `${session.currentNode.text}\nA. ${session.currentNode.choiceA}\nB. ${session.currentNode.choiceB}` }] });
-        session.history.push({ role: "user", parts: [{ text: nextPrompt }] });
+        session.history.push({ role: "assistant", content: `${session.currentNode.text}\nA. ${session.currentNode.choiceA}\nB. ${session.currentNode.choiceB}` });
+        session.history.push({ role: "user", content: nextPrompt });
 
         const storyNode = await generateStoryNode(session.history);
 
