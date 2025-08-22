@@ -14,7 +14,7 @@ const axios = require('axios');
 
 // --- KONFIGURASI ---
 // Dapatkan API Key Anda dari platform Mistral AI
-const MISTRAL_API_KEY = 'ueGPejjmfh84yoM41j2QebLKfjlvwuDy'; // <-- WAJIB DIISI!
+const MISTRAL_API_KEY = 'GANTI_DENGAN_API_KEY_ANDA'; // <-- WAJIB DIISI!
 // --- ---
 
 const b = (t) => `*${t}*`;
@@ -129,13 +129,18 @@ module.exports = async (sock, m, text, from) => {
     const raw = (text || '').trim();
     const lower = raw.toLowerCase();
     const session = global.db.storytime[from];
+    const senderJid = m.key.participant || m.key.remoteJid;
 
     if (lower === '/story' || lower === '/mulai') {
         if (session) {
             return sock.sendMessage(from, { text: "Kamu sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita saat ini sebelum memulai yang baru." }, { quoted: m });
         }
         
-        global.db.storytime[from] = { state: 'awaiting_name', ts: Date.now() };
+        global.db.storytime[from] = { 
+            state: 'awaiting_name', 
+            playerJid: senderJid, // Simpan siapa yang memulai
+            ts: Date.now() 
+        };
         
         const promptMessage = [
             "Petualangan akan segera dimulai!",
@@ -148,6 +153,9 @@ module.exports = async (sock, m, text, from) => {
     }
 
     if (session && session.state === 'awaiting_name') {
+        // Pastikan hanya pemain yang memulai yang bisa memilih nama
+        if (senderJid !== session.playerJid) return;
+
         if (lower.startsWith('/nama ')) {
             const characterName = raw.slice(6).trim();
             if (!characterName) {
@@ -166,6 +174,8 @@ module.exports = async (sock, m, text, from) => {
         if (!session || session.state !== 'playing') {
             return sock.sendMessage(from, { text: "Tidak ada petualangan yang sedang berjalan. Ketik */story* untuk memulai." }, { quoted: m });
         }
+        // Pastikan hanya pemain yang bisa membuat pilihan
+        if (senderJid !== session.playerJid) return;
 
         const choiceLabel = raw.slice(7).trim().toUpperCase();
         if (choiceLabel !== 'A' && choiceLabel !== 'B') {
@@ -202,6 +212,9 @@ module.exports = async (sock, m, text, from) => {
         if (!session) {
             return sock.sendMessage(from, { text: "Tidak ada petualangan yang sedang berjalan." }, { quoted: m });
         }
+        // Pastikan hanya pemain yang bisa menghentikan
+        if (senderJid !== session.playerJid) return;
+        
         delete global.db.storytime[from];
         return sock.sendMessage(from, { text: "Petualangan telah dihentikan." }, { quoted: m });
     }
