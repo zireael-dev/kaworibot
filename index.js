@@ -4,6 +4,7 @@ const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
+const { checkLimit } = require('./lib/limit.js'); // <-- Import limit checker
 
 // ====== KaworiBot Banner ======
 console.clear();
@@ -33,10 +34,12 @@ if (fs.existsSync(dbFile)) {
 } else {
   global.db = {};
 }
+// FIX: Inisialisasi yang lebih aman untuk mencegah error '.includes'
 global.db.setting      = global.db.setting      || {};
-global.db.bannedUsers  = global.db.bannedUsers  || [];
-global.db.users        = global.db.users        || [];
-global.db.groups       = global.db.groups       || [];
+global.db.bannedUsers  = Array.isArray(global.db.bannedUsers) ? global.db.bannedUsers : [];
+global.db.users        = Array.isArray(global.db.users) ? global.db.users : [];
+global.db.groups       = Array.isArray(global.db.groups) ? global.db.groups : [];
+
 
 // Autosave DB ke file setiap 10 detik
 setInterval(() => {
@@ -163,7 +166,6 @@ async function startBot() {
     if (global.db.bannedUsers.includes(sender)) return;
 
     // --- Story Time Game Lock ---
-    // Pastikan database storytime sudah diinisialisasi
     global.db.storytime = global.db.storytime || {};
     const storySession = global.db.storytime[from];
 
@@ -171,13 +173,23 @@ async function startBot() {
         const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai', '/nama', '/acak'];
         const isStoryCommand = allowedCommands.some(cmd => lower.startsWith(cmd));
         
-        // Jika sesi ada DAN perintahnya BUKAN perintah cerita
         if (!isStoryCommand) {
-            // Kirim peringatan dan HENTIKAN eksekusi lebih lanjut
             return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita sebelum menggunakan perintah lain." }, { quoted: m });
         }
     }
     // --- End of Game Lock ---
+
+    // --- Sistem Limit Harian ---
+    const downloaderCommands = ['/fb', '/tiktok', '/ig', '/x', '/yt', '/pinterest', '/spotify'];
+    const isDownloaderCommand = downloaderCommands.some(cmd => lower.startsWith(cmd));
+
+    if (isDownloaderCommand) {
+        if (checkLimit(sender)) {
+            const limitMessage = `⚠️ *Limit Harian Habis* ⚠️\n\nLimit penggunaan harian Anda untuk fitur downloader telah tercapai. Limit akan direset besok.\n\nUpgrade ke *Premium* untuk penggunaan tanpa batas!\nKetik */premium* untuk info lebih lanjut.`;
+            return sock.sendMessage(from, { text: limitMessage }, { quoted: m });
+        }
+    }
+    // --- End of Limit System ---
 
     // — Simpan list pengguna unik untuk broadcast (/bc) —
     if (!global.db.users.includes(sender)) global.db.users.push(sender);
