@@ -165,19 +165,22 @@ async function startBot() {
     // — Skip banned users —
     if (global.db.bannedUsers.includes(sender)) return;
 
-    // --- Story Time Game Lock ---
-    global.db.storytime = global.db.storytime || {};
-    const storySession = global.db.storytime[from];
+    // --- Story Time Game Lock (Updated) ---
+global.db.storytime = global.db.storytime || {};
+const storySession = global.db.storytime[from];
 
-    if (storySession) {
-        const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai', '/nama', '/acak'];
-        const isStoryCommand = allowedCommands.some(cmd => lower.startsWith(cmd));
-        
-        if (!isStoryCommand) {
-            return sock.sendMessage(from, { text: "Anda sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita sebelum menggunakan perintah lain." }, { quoted: m });
-        }
+// Cek hanya jika ada sesi DAN pengirim pesan adalah pemainnya
+if (storySession && storySession.playerJid === sender) {
+    const allowedCommands = ['/pilih', '/stop', '/berhenti', '/story', '/mulai', '/nama', '/acak'];
+    const isStoryCommand = allowedCommands.some(cmd => lower.startsWith(cmd));
+    
+    // Jika sesi ada, pemainnya adalah pengirim, DAN perintahnya BUKAN perintah cerita
+    if (!isStoryCommand) {
+        // Kirim peringatan dan HENTIKAN eksekusi lebih lanjut
+        return sock.sendMessage(from, { text: "Kamu sedang dalam petualangan! Ketik */stop* untuk mengakhiri cerita sebelum menggunakan perintah lain." }, { quoted: m });
     }
-    // --- End of Game Lock ---
+}
+// --- End of Game Lock ---
 
     // --- Sistem Limit Harian ---
     const downloaderCommands = ['/fb', '/vt', '/tiktok', '/ig', '/x', '/twit', '/tw', '/yt', '/pinterest', '/spotify'];
