@@ -3,8 +3,8 @@
  * Cek profil user dengan data dinamis dari database.
  * Trigger: /userinfo, /me
  */
-const fs = 'fs';
-const path = 'path';
+const fs = require('fs');
+const path = require('path');
 
 // Helper untuk memastikan database siap
 function ensureDB() {
@@ -32,16 +32,48 @@ module.exports = async (sock, m, text, from) => {
     const cmd = (text || '').trim().toLowerCase();
     if (!['/userinfo', '/me'].includes(cmd.split(' ')[0])) return;
 
-    const jid = m.key.participant || m.key.remoteJid || from;
-    const name = m.pushName || jid.split('@')[0];
-    const number = jid.replace(/[^0-9]/g, '');
+    // --- LOGIKA BARU: Tentukan JID dan Nama Target dengan Benar ---
+    let targetJid;
+    let name;
+
+    const mentionedJid = m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedJid = m.message?.extendedTextMessage?.contextInfo?.participant;
+
+    if (mentionedJid) {
+        targetJid = mentionedJid;
+        // Untuk mendapatkan nama dari mention, kita perlu info grup
+        if (from.endsWith('@g.us')) {
+            try {
+                const groupMeta = await sock.groupMetadata(from);
+                const participant = groupMeta.participants.find(p => p.id === targetJid);
+                // Nama dari notifikasi (jika ada) atau dari nomor
+                name = participant?.notify || targetJid.split('@')[0];
+            } catch {
+                name = targetJid.split('@')[0];
+            }
+        } else {
+            name = targetJid.split('@')[0];
+        }
+    } else if (quoted) {
+        targetJid = quotedJid;
+        // Nama dari notifikasi (jika ada) atau dari nomor
+        name = m.message.extendedTextMessage.contextInfo.pushName || targetJid.split('@')[0];
+    } else {
+        // Jika tidak ada mention atau reply, targetnya adalah pengirim pesan
+        targetJid = m.key.participant || m.key.remoteJid;
+        name = m.pushName || targetJid.split('@')[0];
+    }
+    // --- ---
+
+    const number = targetJid.replace(/[^0-9]/g, '');
 
     // --- Data Dinamis ---
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0];
     
     // 1. Cek Status Premium & Expired
-    const premiumData = global.db.premium_users[jid];
+    const premiumData = global.db.premium_users[targetJid];
     let isPremium = false;
     let premiumExpiry = 'Tidak Aktif';
     if (premiumData && premiumData.expiry > now.getTime()) {
@@ -52,14 +84,14 @@ module.exports = async (sock, m, text, from) => {
 
     // 2. Cek Sisa Limit
     let limitText = 'Unlimited ✨';
-    if (!isPremium) {
-        let dailyLimit = 5; // Default limit
+    if (!isPremium && !isOwner(targetJid)) {
+        let dailyLimit = 15; // Default limit
         try {
             const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8'));
-            dailyLimit = config.dailyLimit || 5;
+            dailyLimit = config.dailyLimit || 15;
         } catch {}
         
-        const userLimit = global.db.usage_limit[jid] || {};
+        const userLimit = global.db.usage_limit[targetJid] || {};
         const usedToday = userLimit[today] || 0;
         const remaining = dailyLimit - usedToday;
         limitText = `${remaining} / ${dailyLimit}`;
@@ -67,18 +99,18 @@ module.exports = async (sock, m, text, from) => {
 
     // 3. Tentukan Status Pengguna
     let userStatus = 'User';
-    if (isOwner(jid)) {
+    if (isOwner(targetJid)) {
         userStatus = '👑 Owner';
     } else if (isPremium) {
         userStatus = '💎 Premium';
-    } else if (global.db.bannedUsers.includes(jid)) {
+    } else if (global.db.bannedUsers.includes(targetJid)) {
         userStatus = '🚫 Banned';
     }
 
     // Dapatkan foto profil user
     let profilePic;
     try {
-        profilePic = await sock.profilePictureUrl(jid, 'image');
+        profilePic = await sock.profilePictureUrl(targetJid, 'image');
     } catch {
         profilePic = 'https://i.ibb.co/Fz65b7Q/blank-profile-picture.png'; // default
     }
