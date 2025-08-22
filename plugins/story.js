@@ -79,7 +79,8 @@ async function generateImage(prompt) {
     for (let i = 0; i < 30; i++) { // Cek maksimal 30 kali (total ~90 detik)
         await delay(3000); // Tunggu 3 detik
         const statusResponse = await axios.get(checkUrl);
-        if (statusResponse.data?.done) {
+        // FIX: Tambahkan pemeriksaan untuk memastikan 'generations' ada dan tidak kosong
+        if (statusResponse.data?.done && Array.isArray(statusResponse.data.generations) && statusResponse.data.generations.length > 0) {
             imageUrl = statusResponse.data.generations[0]?.img;
             break;
         }
@@ -96,9 +97,9 @@ async function uploadToTelegraph(imageUrl) {
     const form = new FormData();
     form.append('file', imageBuffer, { filename: 'story.jpg', contentType: 'image/jpeg' });
     const { data } = await axios.post('https://telegra.ph/upload', form, {
-        headers: { 
+        headers: {
             ...form.getHeaders(),
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+                                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         }
     });
     if (!Array.isArray(data) || !data[0]?.src) throw new Error('Gagal mengunggah gambar ke telegra.ph.');
@@ -123,15 +124,15 @@ async function sendStoryNode(sock, from, m, storyNode) {
     if (storyNode.imageUrl) {
         await sock.sendMessage(from, {
             text: message.trim(),
-            contextInfo: {
-                externalAdReply: {
-                    title: "Story Time",
-                    body: "Petualanganmu berlanjut...",
-                    thumbnailUrl: storyNode.imageUrl,
-                    mediaType: 1,
-                    renderLargerThumbnail: true
-                }
-            }
+                               contextInfo: {
+                                   externalAdReply: {
+                                       title: "Story Time",
+                                       body: "Petualanganmu berlanjut...",
+                                       thumbnailUrl: storyNode.imageUrl,
+                                       mediaType: 1,
+                                       renderLargerThumbnail: true
+                                   }
+                               }
         }, { quoted: m });
     } else {
         await sock.sendMessage(from, { text: message.trim() }, { quoted: m });
@@ -158,7 +159,7 @@ async function processAndSendStory(sock, m, from, history) {
         }
 
         const storyNode = { text: storyText, choiceA, choiceB, isEnd, imageUrl: finalImageUrl };
-        
+
         const session = global.db.storytime[from];
         session.currentNode = storyNode;
         if (session.state === 'awaiting_name') {
@@ -185,16 +186,16 @@ module.exports = async (sock, m, text, from) => {
         if (session) {
             return sock.sendMessage(from, { text: "Kamu sedang dalam petualangan! Ketik */stop* untuk mengakhiri." }, { quoted: m });
         }
-        
+
         global.db.storytime[from] = { state: 'awaiting_name', playerJid: senderJid, ts: Date.now() };
-        
+
         const promptMessage = ["Petualangan akan segera dimulai!", "Ketik nama untuk karaktermu atau pilih nama acak.", LINE, "➡️ */nama <namamu>*", "➡️ */acak*"].join('\n');
         return sock.sendMessage(from, { text: promptMessage }, { quoted: m });
     }
 
     if (session && session.state === 'awaiting_name') {
         if (senderJid !== session.playerJid) return;
-        
+
         let characterName = null;
         if (lower.startsWith('/nama ')) {
             characterName = raw.slice(6).trim();
@@ -204,14 +205,14 @@ module.exports = async (sock, m, text, from) => {
         }
 
         await sock.sendMessage(from, { text: "Membuat petualangan baru untukmu (ini mungkin butuh waktu)..." }, { quoted: m });
-        
+
         let initialPrompt;
         if (characterName) {
             initialPrompt = `Mulai sebuah cerita petualangan fantasi singkat dengan karakter utama bernama '${characterName}'. PENTING: Saat menarasikan cerita, gunakan gaya bahasa informal dan kata ganti orang kedua seperti 'kamu', '-mu', atau 'dirimu'. Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya, yaitu '${characterName}'. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.`;
         } else {
             initialPrompt = "Mulai sebuah cerita petualangan fantasi singkat dengan karakter yang namanya dibuat oleh AI. PENTING: Saat menarasikan cerita, gunakan gaya bahasa informal dan kata ganti orang kedua seperti 'kamu', '-mu', atau 'dirimu'. Namun, jika ada dialog dari karakter lain (NPC), NPC tersebut harus memanggil karakter utama dengan namanya. Berikan narasi awal, lalu berikan dua pilihan (A dan B). Format balasan harus: narasi cerita, lalu di baris baru 'A. [teks pilihan A]', dan di baris baru 'B. [teks pilihan B]'. Jangan tambahkan kata-kata pembuka seperti 'Tentu'.";
         }
-        
+
         const history = [{ role: "user", content: initialPrompt }];
         session.history = history;
         session.characterName = characterName;
@@ -223,21 +224,21 @@ module.exports = async (sock, m, text, from) => {
 
         const choiceLabel = raw.slice(7).trim().toUpperCase();
         if (choiceLabel !== 'A' && choiceLabel !== 'B') {
-             return sock.sendMessage(from, { text: `❌ Pilihan tidak valid. Pilih */pilih A* atau */pilih B*.` }, { quoted: m });
+            return sock.sendMessage(from, { text: `❌ Pilihan tidak valid. Silakan pilih */pilih A* atau */pilih B*.` }, { quoted: m });
         }
 
         await sock.sendMessage(from, { react: { text: '📖', key: m.key } });
 
         const characterName = session.characterName;
         const chosenText = choiceLabel === 'A' ? session.currentNode.choiceA : session.currentNode.choiceB;
-        
+
         let nextPrompt;
         if (characterName) {
-             nextPrompt = `Karakter '${characterName}' memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi informal ('kamu', '-mu'), dialog NPC pakai nama '${characterName}'. Jika ini akhir cerita, akhiri dengan kata 'END.'. Jika tidak, berikan narasi dan dua pilihan baru (A dan B).`;
+            nextPrompt = `Karakter '${characterName}' memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi informal ('kamu', '-mu'), dialog NPC pakai nama '${characterName}'. Jika ini akhir cerita, akhiri dengan kata 'END.'. Jika tidak, berikan narasi dan dua pilihan baru (A dan B).`;
         } else {
-             nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi informal ('kamu', '-mu'), dialog NPC pakai nama karakter AI. Jika ini akhir cerita, akhiri dengan kata 'END.'. Jika tidak, berikan narasi dan dua pilihan baru (A dan B).`;
+            nextPrompt = `Pemain memilih: "${chosenText}". Lanjutkan cerita. Ingat aturannya: narasi informal ('kamu', '-mu'), dialog NPC pakai nama karakter AI. Jika ini akhir cerita, akhiri dengan kata 'END.'. Jika tidak, berikan narasi dan dua pilihan baru (A dan B).`;
         }
-        
+
         session.history.push({ role: "assistant", content: `${session.currentNode.text}\nA. ${session.currentNode.choiceA}\nB. ${session.currentNode.choiceB}` });
         session.history.push({ role: "user", content: nextPrompt });
 
