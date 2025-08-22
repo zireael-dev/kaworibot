@@ -180,7 +180,7 @@ async function startBot() {
     // --- End of Game Lock ---
 
     // --- Sistem Limit Harian ---
-    const downloaderCommands = ['/fb', '/tiktok', '/ig', '/x', '/yt', '/pinterest', '/spotify'];
+    const downloaderCommands = ['/fb', '/vt', '/tiktok', '/ig', '/x', '/twit', '/tw', '/yt', '/pinterest', '/spotify'];
     const isDownloaderCommand = downloaderCommands.some(cmd => lower.startsWith(cmd));
 
     if (isDownloaderCommand) {
