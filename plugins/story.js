@@ -14,7 +14,7 @@ const axios = require('axios');
 
 // --- KONFIGURASI ---
 // Dapatkan API Key Anda dari platform Mistral AI
-const MISTRAL_API_KEY = 'GANTI_DENGAN_API_KEY_ANDA'; // <-- WAJIB DIISI!
+const MISTRAL_API_KEY = 'ueGPejjmfh84yoM41j2QebLKfjlvwuDy'; // <-- WAJIB DIISI!
 // --- ---
 
 const b = (t) => `*${t}*`;
